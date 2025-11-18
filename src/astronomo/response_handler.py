@@ -2,8 +2,10 @@
 
 from nauyaca.protocol.response import GeminiResponse
 
+from astronomo.parser import GemtextLine, parse_gemtext
 
-def format_response(url: str, response: GeminiResponse) -> str:
+
+def format_response(url: str, response: GeminiResponse) -> list[GemtextLine]:
     """
     Format a Gemini response for display.
 
@@ -12,7 +14,7 @@ def format_response(url: str, response: GeminiResponse) -> str:
         response: The Gemini response object
 
     Returns:
-        Formatted string representation of the response
+        List of parsed Gemtext lines ready for display
     """
     if response.is_success():
         return _format_success_response(url, response)
@@ -24,33 +26,43 @@ def format_response(url: str, response: GeminiResponse) -> str:
         return _format_error_response(response)
 
 
-def _format_success_response(url: str, response: GeminiResponse) -> str:
-    """Format a successful response."""
-    mime_type = response.mime_type or "unknown"
-    body = response.body or "(empty response)"
-    return f"# {url}\n\n**Content-Type:** {mime_type}\n\n---\n\n{body}"
+def _format_success_response(url: str, response: GeminiResponse) -> list[GemtextLine]:
+    """Format a successful response by parsing the Gemtext body."""
+    body = response.body or ""
+
+    # If empty body, return a simple message
+    if not body.strip():
+        return parse_gemtext("(empty response)")
+
+    # Parse the Gemtext content
+    return parse_gemtext(body)
 
 
-def _format_redirect_response(response: GeminiResponse) -> str:
+def _format_redirect_response(response: GeminiResponse) -> list[GemtextLine]:
     """Format a redirect response."""
     redirect_url = response.redirect_url or "(no redirect URL)"
-    return (
-        f"# Redirect\n\n**Status:** {response.status}\n"
-        f"**Redirect to:** {redirect_url}\n\n"
+    gemtext = (
+        f"# Redirect\n\n"
+        f"Status: {response.status}\n"
+        f"Redirect to: {redirect_url}\n\n"
         f"Following redirects automatically..."
     )
+    return parse_gemtext(gemtext)
 
 
-def _format_input_response(response: GeminiResponse) -> str:
+def _format_input_response(response: GeminiResponse) -> list[GemtextLine]:
     """Format an input request response."""
     prompt = response.meta or "Input required"
-    return (
-        f"# Input Required\n\n**Prompt:** {prompt}\n\n"
+    gemtext = (
+        f"# Input Required\n\n"
+        f"Prompt: {prompt}\n\n"
         f"(Interactive input not yet implemented)"
     )
+    return parse_gemtext(gemtext)
 
 
-def _format_error_response(response: GeminiResponse) -> str:
+def _format_error_response(response: GeminiResponse) -> list[GemtextLine]:
     """Format an error response."""
     error_msg = response.meta or "Unknown error"
-    return f"# Error\n\n**Status:** {response.status}\n**Message:** {error_msg}"
+    gemtext = f"# Error\n\nStatus: {response.status}\nMessage: {error_msg}"
+    return parse_gemtext(gemtext)
