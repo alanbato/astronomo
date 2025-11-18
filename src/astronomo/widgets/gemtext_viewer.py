@@ -26,12 +26,26 @@ class GemtextViewer(Static):
     }
     """
 
+    BINDINGS = [
+        ("left", "prev_link", "Prev Link"),
+        ("right", "next_link", "Next Link"),
+        ("enter", "activate_link", "Activate Link"),
+        ("backspace", "navigate_back", "Back"),
+        ("shift+backspace", "navigate_forward", "Forward"),
+    ]
+
     class LinkActivated(Message):
         """Message sent when a link is activated."""
 
         def __init__(self, link: GemtextLink) -> None:
             self.link = link
             super().__init__()
+
+    class NavigateBack(Message):
+        """Message sent when the user wants to navigate back."""
+
+    class NavigateForward(Message):
+        """Message sent when the user wants to navigate forward."""
 
     # Reactive properties
     current_link_index: reactive[int] = reactive(-1, init=False)
@@ -149,6 +163,26 @@ class GemtextViewer(Static):
         if self.links and 0 <= self.current_link_index < len(self.links):
             link = self.links[self.current_link_index]
             self.post_message(self.LinkActivated(link))
+
+    def action_prev_link(self) -> None:
+        """Action: Navigate to the previous link."""
+        self.prev_link()
+
+    def action_next_link(self) -> None:
+        """Action: Navigate to the next link."""
+        self.next_link()
+
+    def action_activate_link(self) -> None:
+        """Action: Activate the currently selected link."""
+        self.activate_current_link()
+
+    def action_navigate_back(self) -> None:
+        """Action: Navigate back in history."""
+        self.post_message(self.NavigateBack())
+
+    def action_navigate_forward(self) -> None:
+        """Action: Navigate forward in history."""
+        self.post_message(self.NavigateForward())
 
     def get_current_link(self) -> GemtextLink | None:
         """Get the currently selected link, or None if no link selected."""

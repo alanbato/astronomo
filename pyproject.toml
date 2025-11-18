@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "nauyaca>=0.1.0",
     "textual[syntax]>=6.6.0",
+    "typer>=0.20.0",
 ]
 
 [project.scripts]
