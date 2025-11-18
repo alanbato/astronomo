@@ -1,0 +1,29 @@
+[project]
+name = "astronomo"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Alan Velasco", email = "alan@alanbato.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "nauyaca>=0.1.0",
+    "textual[syntax]>=6.6.0",
+]
+
+[project.scripts]
+astronomo = "astronomo:main"
+
+[build-system]
+requires = ["uv_build>=0.9.9,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.13.0",
+    "pre-commit>=4.4.0",
+    "pytest>=9.0.1",
+    "ruff>=0.8.4",
+    "textual-dev>=1.8.0",
+]
