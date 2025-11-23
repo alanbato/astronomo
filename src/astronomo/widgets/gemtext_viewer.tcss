@@ -1,0 +1,11 @@
+/* GemtextViewer styles */
+
+GemtextViewer {
+    width: 1fr;
+    height: auto;
+    overflow-y: auto;
+}
+
+GemtextViewer:focus {
+    border: tall $accent;
+}

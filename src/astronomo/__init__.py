@@ -1,5 +1,5 @@
 import typer
-from typing import Optional
+from astronomo.astronomo_app import Astronomo
 
 cli = typer.Typer(
     name="astronomo",
@@ -10,14 +10,12 @@ cli = typer.Typer(
 
 @cli.command()
 def run(
-    url: Optional[str] = typer.Argument(
+    url: str | None = typer.Argument(
         None,
         help="Gemini URL to open on startup (e.g., gemini://geminiprotocol.net/)",
     ),
 ) -> None:
     """Launch Astronomo, optionally opening a Gemini URL."""
-    from astronomo.astronomo import Astronomo
-
     astronomo_app = Astronomo(initial_url=url)
     astronomo_app.run()
 

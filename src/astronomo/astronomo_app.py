@@ -1,3 +1,4 @@
+from pathlib import Path
 from urllib.parse import urljoin, uses_netloc, uses_relative
 
 from nauyaca.client import GeminiClient
@@ -21,35 +22,7 @@ if "gemini" not in uses_netloc:
 class Astronomo(App[None]):
     """A Gemini browser for the terminal."""
 
-    CSS = """
-    #nav-bar {
-        dock: top;
-        height: auto;
-        margin: 1;
-    }
-
-    #nav-bar Horizontal {
-        height: auto;
-    }
-
-    #back-button, #forward-button {
-        min-width: 4;
-        margin-right: 1;
-        link-style: none;
-    }
-
-    #url-input {
-        width: 1fr;
-    }
-
-    VerticalScroll {
-        height: 1fr;
-    }
-
-    #content {
-        padding: 1 2;
-    }
-    """
+    CSS_PATH = Path("astronomo_app.tcss")
 
     BINDINGS = [
         ("ctrl+q", "quit", "Quit"),

@@ -1,7 +1,9 @@
 """GemtextViewer widget for displaying interactive Gemtext content."""
 
-from rich.text import Text
-from textual import events
+from pathlib import Path
+
+from textual.containers import VerticalScroll
+from textual.content import Content
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
@@ -9,22 +11,27 @@ from textual.widgets import Static
 from astronomo.parser import GemtextLine, GemtextLink, LineType
 
 
-class GemtextViewer(Static):
+class GemtextContent(Static):
+    """Static widget that displays styled Gemtext content."""
+
+    def action_activate_link_by_index(self, index: int) -> None:
+        """Forward link activation to parent GemtextViewer."""
+        parent = self.parent
+        if isinstance(parent, GemtextViewer):
+            parent.action_activate_link_by_index(index)
+
+
+class GemtextViewer(VerticalScroll):
     """A widget for displaying Gemtext with interactive, navigable links.
 
     Features:
-    - Inline link display with highlighting
-    - Keyboard navigation (arrows, j/k, tab, enter)
+    - Styled rendering for all Gemtext elements
+    - Keyboard navigation for links
     - Mouse click support
     - Smart label display (label if present, else URL)
-    - Styled rendering for all Gemtext elements
     """
 
-    DEFAULT_CSS = """
-    GemtextViewer {
-        width: 1fr;
-    }
-    """
+    CSS_PATH = Path("gemtext_viewer.tcss")
 
     BINDINGS = [
         ("left", "prev_link", "Prev Link"),
@@ -33,6 +40,15 @@ class GemtextViewer(Static):
         ("backspace", "navigate_back", "Back"),
         ("shift+backspace", "navigate_forward", "Forward"),
     ]
+
+    # UI constants for prefixes
+    LINK_INDICATOR = "▶"
+    PADDING = "  "
+    LIST_BULLET = "•"
+    QUOTE_PREFIX = "┃"
+
+    # Reactive properties
+    current_link_index: reactive[int] = reactive(-1, init=False)
 
     class LinkActivated(Message):
         """Message sent when a link is activated."""
@@ -47,121 +63,135 @@ class GemtextViewer(Static):
     class NavigateForward(Message):
         """Message sent when the user wants to navigate forward."""
 
-    # Reactive properties
-    current_link_index: reactive[int] = reactive(-1, init=False)
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.lines: list[GemtextLine] = []
-        self.links: list[GemtextLink] = []
-        self._link_line_numbers: dict[int, int] = {}  # Map link index to line number
+        self.link_indices: list[int] = []  # Maps link index to line index
         self.can_focus = True
+        self._content_widget: GemtextContent | None = None
+
+    def compose(self):
+        """Create the content widget."""
+        self._content_widget = GemtextContent(id="content")
+        yield self._content_widget
 
     def update_content(self, lines: list[GemtextLine]) -> None:
         """Update the displayed content with parsed Gemtext lines."""
         self.lines = lines
 
-        # Extract links and their positions
-        self.links = []
-        self._link_line_numbers = {}
-        for line_num, line in enumerate(lines):
-            if isinstance(line, GemtextLink):
-                link_index = len(self.links)
-                self.links.append(line)
-                self._link_line_numbers[link_index] = line_num
+        # Build link index map
+        self.link_indices = []
+        for line_idx, line in enumerate(lines):
+            if line.line_type == LineType.LINK:
+                self.link_indices.append(line_idx)
 
         # Set initial link selection
-        self.current_link_index = 0 if self.links else -1
-        self.update(self._build_content())
+        self.current_link_index = 0 if self.link_indices else -1
 
-    def _build_content(self) -> Text:
-        """Build the Gemtext content with styling."""
-        if not self.lines:
-            return Text("No content to display", style="dim")
+        # Build and display content
+        self._refresh_content()
 
-        output = Text()
+    def _build_content(self) -> Content:
+        """Build a Content object with all styled content."""
+        parts: list[Content] = []
+        current_link_idx = 0
 
-        for line_num, line in enumerate(self.lines):
-            line_text = self._render_line(line, line_num)
-            output.append(line_text)
-            output.append("\n")
+        for line_idx, line in enumerate(self.lines):
+            # Check if this is a link and track its index
+            link_index = -1
+            if line.line_type == LineType.LINK:
+                link_index = current_link_idx
+                current_link_idx += 1
 
-        return output
+            # Check if this is the selected link
+            is_selected = bool(
+                line.line_type == LineType.LINK
+                and self.current_link_index >= 0
+                and link_index == self.current_link_index
+            )
 
-    def _render_line(self, line: GemtextLine, line_num: int) -> Text:
-        """Render a single Gemtext line with appropriate styling."""
-        # Check if this line is the currently selected link
-        is_selected = False
-        if isinstance(line, GemtextLink):
-            link_index = self._get_link_index_by_line(line_num)
-            is_selected = link_index == self.current_link_index
+            # Get content for this line (includes newline)
+            parts.append(self._get_line_content(line, is_selected, link_index))
 
-        if line.line_type == LineType.LINK:
-            assert isinstance(line, GemtextLink)
-            return self._render_link(line, is_selected)
-        elif line.line_type == LineType.HEADING_1:
-            return Text(line.content, style="bold magenta")
-        elif line.line_type == LineType.HEADING_2:
-            return Text(line.content, style="bold cyan")
-        elif line.line_type == LineType.HEADING_3:
-            return Text(line.content, style="bold yellow")
-        elif line.line_type == LineType.LIST_ITEM:
-            return Text(f"  • {line.content}", style="default")
-        elif line.line_type == LineType.BLOCKQUOTE:
-            return Text(f"┃ {line.content}", style="italic dim")
-        elif line.line_type == LineType.PREFORMATTED:
-            return Text(line.content, style="on #1a1a1a")
-        else:  # TEXT
-            return Text(line.content, style="default")
+        return Content.assemble(*parts)
 
-    def _render_link(self, link: GemtextLink, is_selected: bool) -> Text:
-        """Render a link with appropriate styling based on selection state."""
-        text = Text()
+    def _get_line_markup(
+        self, line_type: LineType, is_selected: bool, link_index: int = -1
+    ) -> str:
+        """Get the markup template for a line type."""
+        if line_type == LineType.LINK:
+            if is_selected:
+                return f"[$text-accent on $accent-muted @click=activate_link_by_index({link_index})]$link_indicator [underline]$content[/underline][/]\n"
+            else:
+                return f"$padding[$text-accent @click=activate_link_by_index({link_index})][underline]$content[/underline][/]\n"
 
-        if is_selected:
-            # Selected link: bright cyan, underlined, with indicator
-            text.append("▶ ", style="bold bright_cyan")
-            text.append(link.content, style="bold bright_cyan underline")
+        elif line_type == LineType.HEADING_1:
+            return "[$text-primary on $primary-muted][bold]$content[/][/]\n"
+
+        elif line_type == LineType.HEADING_2:
+            return "[$text-secondary on $secondary-muted][bold]$content[/][/]\n"
+
+        elif line_type == LineType.HEADING_3:
+            return "[$foreground-muted]$content[/]\n"
+
+        elif line_type == LineType.LIST_ITEM:
+            return "[$text]$padding$bullet $content[/]\n"
+
+        elif line_type == LineType.BLOCKQUOTE:
+            return "[$text]$quote_prefix [italic]$content[/][/]\n"
+
+        elif line_type == LineType.PREFORMATTED:
+            return "[$text-muted on $background-lighten-1]$content[/]\n"
+
         else:
-            # Normal link: blue, no underline
-            text.append("  ", style="default")
-            text.append(link.content, style="blue")
+            return "[$text]$content[/]\n"
 
-        return text
+    def _get_line_content(
+        self, line: GemtextLine, is_selected: bool = False, link_index: int = -1
+    ) -> Content:
+        """Get the styled Content for a line."""
+        markup = self._get_line_markup(line.line_type, is_selected, link_index)
+        return Content.from_markup(
+            markup,
+            content=line.content,
+            padding=self.PADDING,
+            link_indicator=self.LINK_INDICATOR,
+            bullet=self.LIST_BULLET,
+            quote_prefix=self.QUOTE_PREFIX,
+        )
 
-    def _get_link_index_by_line(self, line_num: int) -> int:
-        """Get link index from line number, or -1 if not a link."""
-        for link_idx, ln in self._link_line_numbers.items():
-            if ln == line_num:
-                return link_idx
-        return -1
+    def _refresh_content(self) -> None:
+        """Rebuild and display the content."""
+        if self._content_widget is not None:
+            text = self._build_content()
+            self._content_widget.update(text)
 
     def next_link(self) -> None:
         """Navigate to the next link."""
-        if not self.links:
+        if not self.link_indices:
             return
 
-        if self.current_link_index < len(self.links) - 1:
+        if self.current_link_index < len(self.link_indices) - 1:
             self.current_link_index += 1
         else:
-            # Wrap around to first link
             self.current_link_index = 0
 
     def prev_link(self) -> None:
         """Navigate to the previous link."""
-        if not self.links:
+        if not self.link_indices:
             return
 
         if self.current_link_index > 0:
             self.current_link_index -= 1
         else:
-            # Wrap around to last link
-            self.current_link_index = len(self.links) - 1
+            self.current_link_index = len(self.link_indices) - 1
 
     def activate_current_link(self) -> None:
         """Activate the currently selected link."""
-        if self.links and 0 <= self.current_link_index < len(self.links):
-            link = self.links[self.current_link_index]
+        if self.link_indices and 0 <= self.current_link_index < len(self.link_indices):
+            line_idx = self.link_indices[self.current_link_index]
+            link = self.lines[line_idx]
+            assert isinstance(link, GemtextLink)
             self.post_message(self.LinkActivated(link))
 
     def action_prev_link(self) -> None:
@@ -176,6 +206,11 @@ class GemtextViewer(Static):
         """Action: Activate the currently selected link."""
         self.activate_current_link()
 
+    def action_activate_link_by_index(self, index: int) -> None:
+        """Action: Activate a specific link by its index (used by click handler)."""
+        self.current_link_index = index
+        self.activate_current_link()
+
     def action_navigate_back(self) -> None:
         """Action: Navigate back in history."""
         self.post_message(self.NavigateBack())
@@ -186,33 +221,19 @@ class GemtextViewer(Static):
 
     def get_current_link(self) -> GemtextLink | None:
         """Get the currently selected link, or None if no link selected."""
-        if self.links and 0 <= self.current_link_index < len(self.links):
-            return self.links[self.current_link_index]
+        if self.link_indices and 0 <= self.current_link_index < len(self.link_indices):
+            line_idx = self.link_indices[self.current_link_index]
+            link = self.lines[line_idx]
+            assert isinstance(link, GemtextLink)
+            return link
         return None
-
-    def on_click(self, event: events.Click) -> None:
-        """Handle mouse clicks on links."""
-        # Calculate which link was clicked based on y position
-        # Since each line is rendered with a newline, the y coordinate
-        # corresponds to the line number in self.lines
-
-        clicked_line = event.y
-        if 0 <= clicked_line < len(self.lines):
-            line = self.lines[clicked_line]
-            if isinstance(line, GemtextLink):
-                # Find the index of this link
-                link_index = self._get_link_index_by_line(clicked_line)
-                if link_index >= 0:
-                    self.current_link_index = link_index
-                    self.activate_current_link()
 
     def watch_current_link_index(self, old_index: int, new_index: int) -> None:
         """React to link selection changes."""
-        # Refresh display when selection changes
-        self.update(self._build_content())
+        # Rebuild content to show new selection
+        self._refresh_content()
 
-        # Update status bar with current link URL (if parent app supports it)
-        current_link = self.get_current_link()
-        if current_link:
-            # The app can watch for this or we can emit a message
-            pass
+        # Scroll to the selected link
+        if 0 <= new_index < len(self.link_indices):
+            line_idx = self.link_indices[new_index]
+            self.scroll_to(y=line_idx, animate=False)
