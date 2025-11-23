@@ -3,7 +3,6 @@
 from pathlib import Path
 
 from textual.containers import VerticalScroll
-from textual.content import Content
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
@@ -11,14 +10,202 @@ from textual.widgets import Static
 from astronomo.parser import GemtextLine, GemtextLink, LineType
 
 
-class GemtextContent(Static):
-    """Static widget that displays styled Gemtext content."""
+# --- Line Widget Classes ---
 
-    def action_activate_link_by_index(self, index: int) -> None:
-        """Forward link activation to parent GemtextViewer."""
+
+class GemtextLineWidget(Static):
+    """Base widget for a single line of Gemtext content."""
+
+    DEFAULT_CSS = """
+    GemtextLineWidget {
+        width: 100%;
+        height: auto;
+    }
+    """
+
+    def __init__(self, line: GemtextLine, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.line = line
+
+
+class GemtextTextWidget(GemtextLineWidget):
+    """Widget for plain text lines."""
+
+    DEFAULT_CSS = """
+    GemtextTextWidget {
+        color: $text;
+    }
+    """
+
+    def compose(self):
+        return []
+
+    def render(self) -> str:
+        return self.line.content
+
+
+class GemtextHeading1Widget(GemtextLineWidget):
+    """Widget for level 1 headings."""
+
+    DEFAULT_CSS = """
+    GemtextHeading1Widget {
+        background: $primary-muted;
+        color: $text-primary;
+        text-style: bold;
+    }
+    """
+
+    def render(self) -> str:
+        return self.line.content
+
+
+class GemtextHeading2Widget(GemtextLineWidget):
+    """Widget for level 2 headings."""
+
+    DEFAULT_CSS = """
+    GemtextHeading2Widget {
+        background: $secondary-muted;
+        color: $text-secondary;
+        text-style: bold;
+    }
+    """
+
+    def render(self) -> str:
+        return self.line.content
+
+
+class GemtextHeading3Widget(GemtextLineWidget):
+    """Widget for level 3 headings."""
+
+    DEFAULT_CSS = """
+    GemtextHeading3Widget {
+        color: $foreground-muted;
+    }
+    """
+
+    def render(self) -> str:
+        return self.line.content
+
+
+class GemtextListItemWidget(GemtextLineWidget):
+    """Widget for list items."""
+
+    DEFAULT_CSS = """
+    GemtextListItemWidget {
+        color: $text;
+    }
+    """
+
+    LIST_BULLET = "•"
+    PADDING = "  "
+
+    def render(self) -> str:
+        return f"{self.PADDING}{self.LIST_BULLET} {self.line.content}"
+
+
+class GemtextBlockquoteWidget(GemtextLineWidget):
+    """Widget for blockquotes."""
+
+    DEFAULT_CSS = """
+    GemtextBlockquoteWidget {
+        color: $text;
+        text-style: italic;
+    }
+    """
+
+    QUOTE_PREFIX = "┃"
+
+    def render(self) -> str:
+        return f"{self.QUOTE_PREFIX} {self.line.content}"
+
+
+class GemtextPreformattedWidget(GemtextLineWidget):
+    """Widget for preformatted text blocks."""
+
+    DEFAULT_CSS = """
+    GemtextPreformattedWidget {
+        background: $background-lighten-1;
+        color: $text-muted;
+    }
+    """
+
+    def render(self) -> str:
+        return self.line.content
+
+
+class GemtextLinkWidget(GemtextLineWidget):
+    """Widget for links with selection support."""
+
+    DEFAULT_CSS = """
+    GemtextLinkWidget {
+        color: $text-accent;
+        text-style: underline;
+        padding-left: 2;
+    }
+
+    GemtextLinkWidget.-selected {
+        background: $accent-muted;
+        padding-left: 0;
+    }
+    """
+
+    LINK_INDICATOR = "▶ "
+
+    def __init__(self, line: GemtextLink, link_index: int, **kwargs) -> None:
+        super().__init__(line, **kwargs)
+        self.link_index = link_index
+
+    @property
+    def link(self) -> GemtextLink:
+        """Get the link data."""
+        assert isinstance(self.line, GemtextLink)
+        return self.line
+
+    def render(self) -> str:
+        prefix = self.LINK_INDICATOR if self.has_class("-selected") else ""
+        return f"{prefix}{self.line.content}"
+
+    def on_click(self) -> None:
+        """Handle click on link."""
         parent = self.parent
         if isinstance(parent, GemtextViewer):
-            parent.action_activate_link_by_index(index)
+            parent.action_activate_link_by_index(self.link_index)
+
+
+# --- Line Widget Factory ---
+
+
+def create_line_widget(line: GemtextLine, link_index: int = -1) -> GemtextLineWidget:
+    """Create the appropriate widget for a Gemtext line.
+
+    Args:
+        line: The parsed Gemtext line
+        link_index: For links, the index in the link list (-1 for non-links)
+
+    Returns:
+        A widget appropriate for the line type
+    """
+    match line.line_type:
+        case LineType.LINK:
+            assert isinstance(line, GemtextLink)
+            return GemtextLinkWidget(line, link_index)
+        case LineType.HEADING_1:
+            return GemtextHeading1Widget(line)
+        case LineType.HEADING_2:
+            return GemtextHeading2Widget(line)
+        case LineType.HEADING_3:
+            return GemtextHeading3Widget(line)
+        case LineType.LIST_ITEM:
+            return GemtextListItemWidget(line)
+        case LineType.BLOCKQUOTE:
+            return GemtextBlockquoteWidget(line)
+        case LineType.PREFORMATTED:
+            return GemtextPreformattedWidget(line)
+        case _:
+            return GemtextTextWidget(line)
+
+
+# --- Main Viewer ---
 
 
 class GemtextViewer(VerticalScroll):
@@ -41,12 +228,6 @@ class GemtextViewer(VerticalScroll):
         ("shift+backspace", "navigate_forward", "Forward"),
     ]
 
-    # UI constants for prefixes
-    LINK_INDICATOR = "▶"
-    PADDING = "  "
-    LIST_BULLET = "•"
-    QUOTE_PREFIX = "┃"
-
     # Reactive properties
     current_link_index: reactive[int] = reactive(-1, init=False)
 
@@ -66,133 +247,70 @@ class GemtextViewer(VerticalScroll):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.lines: list[GemtextLine] = []
-        self.link_indices: list[int] = []  # Maps link index to line index
         self.can_focus = True
-        self._content_widget: GemtextContent | None = None
-
-    def compose(self):
-        """Create the content widget."""
-        self._content_widget = GemtextContent(id="content")
-        yield self._content_widget
+        self._link_widgets: list[GemtextLinkWidget] = []
 
     def update_content(self, lines: list[GemtextLine]) -> None:
         """Update the displayed content with parsed Gemtext lines."""
         self.lines = lines
 
-        # Build link index map
-        self.link_indices = []
-        for line_idx, line in enumerate(lines):
+        # Remove old content widgets
+        for widget in self.query(GemtextLineWidget):
+            widget.remove()
+
+        # Build new widgets
+        self._link_widgets = []
+        widgets: list[GemtextLineWidget] = []
+        link_idx = 0
+
+        for line in lines:
             if line.line_type == LineType.LINK:
-                self.link_indices.append(line_idx)
-
-        # Set initial link selection
-        self.current_link_index = 0 if self.link_indices else -1
-
-        # Build and display content
-        self._refresh_content()
-
-    def _build_content(self) -> Content:
-        """Build a Content object with all styled content."""
-        parts: list[Content] = []
-        current_link_idx = 0
-
-        for line_idx, line in enumerate(self.lines):
-            # Check if this is a link and track its index
-            link_index = -1
-            if line.line_type == LineType.LINK:
-                link_index = current_link_idx
-                current_link_idx += 1
-
-            # Check if this is the selected link
-            is_selected = bool(
-                line.line_type == LineType.LINK
-                and self.current_link_index >= 0
-                and link_index == self.current_link_index
-            )
-
-            # Get content for this line (includes newline)
-            parts.append(self._get_line_content(line, is_selected, link_index))
-
-        return Content.assemble(*parts)
-
-    def _get_line_markup(
-        self, line_type: LineType, is_selected: bool, link_index: int = -1
-    ) -> str:
-        """Get the markup template for a line type."""
-        if line_type == LineType.LINK:
-            if is_selected:
-                return f"[$text-accent on $accent-muted @click=activate_link_by_index({link_index})]$link_indicator [underline]$content[/underline][/]\n"
+                widget = create_line_widget(line, link_idx)
+                assert isinstance(widget, GemtextLinkWidget)
+                self._link_widgets.append(widget)
+                link_idx += 1
             else:
-                return f"$padding[$text-accent @click=activate_link_by_index({link_index})][underline]$content[/underline][/]\n"
+                widget = create_line_widget(line)
+            widgets.append(widget)
 
-        elif line_type == LineType.HEADING_1:
-            return "[$text-primary on $primary-muted][bold]$content[/][/]\n"
+        # Mount all widgets
+        self.mount(*widgets)
 
-        elif line_type == LineType.HEADING_2:
-            return "[$text-secondary on $secondary-muted][bold]$content[/][/]\n"
+        # Set initial link selection (triggers watch_current_link_index)
+        self.current_link_index = 0 if self._link_widgets else -1
 
-        elif line_type == LineType.HEADING_3:
-            return "[$foreground-muted]$content[/]\n"
-
-        elif line_type == LineType.LIST_ITEM:
-            return "[$text]$padding$bullet $content[/]\n"
-
-        elif line_type == LineType.BLOCKQUOTE:
-            return "[$text]$quote_prefix [italic]$content[/][/]\n"
-
-        elif line_type == LineType.PREFORMATTED:
-            return "[$text-muted on $background-lighten-1]$content[/]\n"
-
-        else:
-            return "[$text]$content[/]\n"
-
-    def _get_line_content(
-        self, line: GemtextLine, is_selected: bool = False, link_index: int = -1
-    ) -> Content:
-        """Get the styled Content for a line."""
-        markup = self._get_line_markup(line.line_type, is_selected, link_index)
-        return Content.from_markup(
-            markup,
-            content=line.content,
-            padding=self.PADDING,
-            link_indicator=self.LINK_INDICATOR,
-            bullet=self.LIST_BULLET,
-            quote_prefix=self.QUOTE_PREFIX,
-        )
-
-    def _refresh_content(self) -> None:
-        """Rebuild and display the content."""
-        if self._content_widget is not None:
-            text = self._build_content()
-            self._content_widget.update(text)
+    @property
+    def link_indices(self) -> list[int]:
+        """Get list of link indices (for compatibility with tests)."""
+        return list(range(len(self._link_widgets)))
 
     def next_link(self) -> None:
         """Navigate to the next link."""
-        if not self.link_indices:
+        if not self._link_widgets:
             return
 
-        if self.current_link_index < len(self.link_indices) - 1:
+        if self.current_link_index < len(self._link_widgets) - 1:
             self.current_link_index += 1
         else:
             self.current_link_index = 0
 
     def prev_link(self) -> None:
         """Navigate to the previous link."""
-        if not self.link_indices:
+        if not self._link_widgets:
             return
 
         if self.current_link_index > 0:
             self.current_link_index -= 1
         else:
-            self.current_link_index = len(self.link_indices) - 1
+            self.current_link_index = len(self._link_widgets) - 1
 
     def activate_current_link(self) -> None:
         """Activate the currently selected link."""
-        if self.link_indices and 0 <= self.current_link_index < len(self.link_indices):
-            line_idx = self.link_indices[self.current_link_index]
-            link = self.lines[line_idx]
-            assert isinstance(link, GemtextLink)
-            self.post_message(self.LinkActivated(link))
+        if self._link_widgets and 0 <= self.current_link_index < len(
+            self._link_widgets
+        ):
+            link_widget = self._link_widgets[self.current_link_index]
+            self.post_message(self.LinkActivated(link_widget.link))
 
     def action_prev_link(self) -> None:
         """Action: Navigate to the previous link."""
@@ -221,19 +339,44 @@ class GemtextViewer(VerticalScroll):
 
     def get_current_link(self) -> GemtextLink | None:
         """Get the currently selected link, or None if no link selected."""
-        if self.link_indices and 0 <= self.current_link_index < len(self.link_indices):
-            line_idx = self.link_indices[self.current_link_index]
-            link = self.lines[line_idx]
-            assert isinstance(link, GemtextLink)
-            return link
+        if self._link_widgets and 0 <= self.current_link_index < len(
+            self._link_widgets
+        ):
+            return self._link_widgets[self.current_link_index].link
         return None
+
+    def _scroll_to_link(self, link_widget: GemtextLinkWidget) -> None:
+        """Scroll to make the link widget visible."""
+        # Check if link is already visible (with some padding)
+        link_top = link_widget.virtual_region.y
+        link_bottom = link_top + link_widget.virtual_region.height
+        viewport_top = self.scroll_y
+        viewport_height = self.scrollable_content_region.height
+        viewport_bottom = viewport_top + viewport_height
+
+        padding = 3  # lines of context
+
+        # Only scroll if the link is not fully visible with padding
+        if link_top < viewport_top + padding:
+            # Link is above viewport - scroll up to show it with padding
+            self.scroll_to(y=max(0, link_top - padding), animate=False, force=True)
+        elif link_bottom > viewport_bottom - padding:
+            # Link is below viewport - scroll down to show it with padding
+            target_y = link_bottom - viewport_height + padding
+            self.scroll_to(y=max(0, target_y), animate=False, force=True)
 
     def watch_current_link_index(self, old_index: int, new_index: int) -> None:
         """React to link selection changes."""
-        # Rebuild content to show new selection
-        self._refresh_content()
+        # Deselect old link
+        if 0 <= old_index < len(self._link_widgets):
+            self._link_widgets[old_index].remove_class("-selected")
+            self._link_widgets[old_index].refresh()
 
-        # Scroll to the selected link
-        if 0 <= new_index < len(self.link_indices):
-            line_idx = self.link_indices[new_index]
-            self.scroll_to(y=line_idx, animate=False)
+        # Select new link and scroll to it
+        if 0 <= new_index < len(self._link_widgets):
+            link_widget = self._link_widgets[new_index]
+            link_widget.add_class("-selected")
+            link_widget.refresh()
+
+            # Scroll to the link after refresh to ensure layout is complete
+            self.call_after_refresh(self._scroll_to_link, link_widget)

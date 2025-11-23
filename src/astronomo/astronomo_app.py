@@ -4,7 +4,7 @@ from urllib.parse import urljoin, uses_netloc, uses_relative
 from nauyaca.client import GeminiClient
 from textual import work
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal
 from textual.widgets import Button, Footer, Header, Input
 
 from astronomo.history import HistoryEntry, HistoryManager
@@ -46,7 +46,7 @@ class Astronomo(App[None]):
                 placeholder="Enter a Gemini URL (e.g., gemini://geminiprotocol.net/)",
                 id="url-input",
             )
-        yield VerticalScroll(GemtextViewer(id="content"))
+        yield GemtextViewer(id="content")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -192,9 +192,8 @@ class Astronomo(App[None]):
         current_entry = self.history.current()
         if current_entry:
             viewer = self.query_one("#content", GemtextViewer)
-            scroll_container = self.query_one(VerticalScroll)
             # Update the entry in place (dataclass fields are mutable)
-            current_entry.scroll_position = scroll_container.scroll_y
+            current_entry.scroll_position = viewer.scroll_y
             current_entry.link_index = viewer.current_link_index
 
     def _restore_from_history(self, entry: HistoryEntry) -> None:
@@ -214,11 +213,8 @@ class Astronomo(App[None]):
             viewer = self.query_one("#content", GemtextViewer)
             viewer.update_content(entry.content)
 
-            # Restore scroll position
-            scroll_container = self.query_one(VerticalScroll)
-            scroll_container.scroll_y = entry.scroll_position
-
-            # Restore link selection
+            # Restore scroll position and link selection
+            viewer.scroll_y = entry.scroll_position
             viewer.current_link_index = entry.link_index
         finally:
             self._navigating_history = False
