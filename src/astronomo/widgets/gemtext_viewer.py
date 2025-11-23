@@ -7,7 +7,7 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
 
-from astronomo.parser import GemtextLine, GemtextLink, LineType
+from astronomo.parser import GemtextHeading, GemtextLine, GemtextLink, LineType
 
 
 # --- Line Widget Classes ---
@@ -37,51 +37,38 @@ class GemtextTextWidget(GemtextLineWidget):
     }
     """
 
-    def compose(self):
-        return []
-
     def render(self) -> str:
         return self.line.content
 
 
-class GemtextHeading1Widget(GemtextLineWidget):
-    """Widget for level 1 headings."""
+class GemtextHeadingWidget(GemtextLineWidget):
+    """Widget for headings (levels 1-3)."""
 
     DEFAULT_CSS = """
-    GemtextHeading1Widget {
+    GemtextHeadingWidget {
+        text-style: bold;
+    }
+
+    GemtextHeadingWidget.-level-1 {
         background: $primary-muted;
         color: $text-primary;
-        text-style: bold;
     }
-    """
 
-    def render(self) -> str:
-        return self.line.content
-
-
-class GemtextHeading2Widget(GemtextLineWidget):
-    """Widget for level 2 headings."""
-
-    DEFAULT_CSS = """
-    GemtextHeading2Widget {
+    GemtextHeadingWidget.-level-2 {
         background: $secondary-muted;
         color: $text-secondary;
-        text-style: bold;
     }
-    """
 
-    def render(self) -> str:
-        return self.line.content
-
-
-class GemtextHeading3Widget(GemtextLineWidget):
-    """Widget for level 3 headings."""
-
-    DEFAULT_CSS = """
-    GemtextHeading3Widget {
+    GemtextHeadingWidget.-level-3 {
+        background: transparent;
         color: $foreground-muted;
+        text-style: none;
     }
     """
+
+    def __init__(self, line: GemtextHeading, **kwargs) -> None:
+        super().__init__(line, **kwargs)
+        self.add_class(f"-level-{line.level}")
 
     def render(self) -> str:
         return self.line.content
@@ -158,7 +145,8 @@ class GemtextLinkWidget(GemtextLineWidget):
     @property
     def link(self) -> GemtextLink:
         """Get the link data."""
-        assert isinstance(self.line, GemtextLink)
+        if not isinstance(self.line, GemtextLink):
+            raise TypeError(f"Expected GemtextLink, got {type(self.line).__name__}")
         return self.line
 
     def render(self) -> str:
@@ -184,17 +172,23 @@ def create_line_widget(line: GemtextLine, link_index: int = -1) -> GemtextLineWi
 
     Returns:
         A widget appropriate for the line type
+
+    Raises:
+        TypeError: If line type doesn't match expected class
     """
     match line.line_type:
         case LineType.LINK:
-            assert isinstance(line, GemtextLink)
+            if not isinstance(line, GemtextLink):
+                raise TypeError(
+                    f"LineType.LINK requires GemtextLink, got {type(line).__name__}"
+                )
             return GemtextLinkWidget(line, link_index)
-        case LineType.HEADING_1:
-            return GemtextHeading1Widget(line)
-        case LineType.HEADING_2:
-            return GemtextHeading2Widget(line)
-        case LineType.HEADING_3:
-            return GemtextHeading3Widget(line)
+        case LineType.HEADING_1 | LineType.HEADING_2 | LineType.HEADING_3:
+            if not isinstance(line, GemtextHeading):
+                raise TypeError(
+                    f"Heading type requires GemtextHeading, got {type(line).__name__}"
+                )
+            return GemtextHeadingWidget(line)
         case LineType.LIST_ITEM:
             return GemtextListItemWidget(line)
         case LineType.BLOCKQUOTE:
@@ -249,6 +243,13 @@ class GemtextViewer(VerticalScroll):
         self.lines: list[GemtextLine] = []
         self.can_focus = True
         self._link_widgets: list[GemtextLinkWidget] = []
+        self._skip_initial_scroll = False  # Flag to skip scroll on initial content load
+
+    def _get_link_widget(self, index: int) -> GemtextLinkWidget | None:
+        """Get link widget at index, or None if index is invalid."""
+        if 0 <= index < len(self._link_widgets):
+            return self._link_widgets[index]
+        return None
 
     def update_content(self, lines: list[GemtextLine]) -> None:
         """Update the displayed content with parsed Gemtext lines."""
@@ -266,8 +267,8 @@ class GemtextViewer(VerticalScroll):
         for line in lines:
             if line.line_type == LineType.LINK:
                 widget = create_line_widget(line, link_idx)
-                assert isinstance(widget, GemtextLinkWidget)
-                self._link_widgets.append(widget)
+                if isinstance(widget, GemtextLinkWidget):
+                    self._link_widgets.append(widget)
                 link_idx += 1
             else:
                 widget = create_line_widget(line)
@@ -276,13 +277,13 @@ class GemtextViewer(VerticalScroll):
         # Mount all widgets
         self.mount(*widgets)
 
-        # Set initial link selection (triggers watch_current_link_index)
-        self.current_link_index = 0 if self._link_widgets else -1
+        # Scroll to top for new content
+        self.scroll_to(y=0, animate=False)
 
-    @property
-    def link_indices(self) -> list[int]:
-        """Get list of link indices (for compatibility with tests)."""
-        return list(range(len(self._link_widgets)))
+        # Set initial link selection WITHOUT triggering scroll-to-link
+        self._skip_initial_scroll = True
+        self.current_link_index = 0 if self._link_widgets else -1
+        self._skip_initial_scroll = False
 
     def next_link(self) -> None:
         """Navigate to the next link."""
@@ -306,10 +307,8 @@ class GemtextViewer(VerticalScroll):
 
     def activate_current_link(self) -> None:
         """Activate the currently selected link."""
-        if self._link_widgets and 0 <= self.current_link_index < len(
-            self._link_widgets
-        ):
-            link_widget = self._link_widgets[self.current_link_index]
+        link_widget = self._get_link_widget(self.current_link_index)
+        if link_widget:
             self.post_message(self.LinkActivated(link_widget.link))
 
     def action_prev_link(self) -> None:
@@ -339,11 +338,8 @@ class GemtextViewer(VerticalScroll):
 
     def get_current_link(self) -> GemtextLink | None:
         """Get the currently selected link, or None if no link selected."""
-        if self._link_widgets and 0 <= self.current_link_index < len(
-            self._link_widgets
-        ):
-            return self._link_widgets[self.current_link_index].link
-        return None
+        link_widget = self._get_link_widget(self.current_link_index)
+        return link_widget.link if link_widget else None
 
     def _scroll_to_link(self, link_widget: GemtextLinkWidget) -> None:
         """Scroll to make the link widget visible."""
@@ -368,15 +364,14 @@ class GemtextViewer(VerticalScroll):
     def watch_current_link_index(self, old_index: int, new_index: int) -> None:
         """React to link selection changes."""
         # Deselect old link
-        if 0 <= old_index < len(self._link_widgets):
-            self._link_widgets[old_index].remove_class("-selected")
-            self._link_widgets[old_index].refresh()
+        old_widget = self._get_link_widget(old_index)
+        if old_widget:
+            old_widget.remove_class("-selected")
 
         # Select new link and scroll to it
-        if 0 <= new_index < len(self._link_widgets):
-            link_widget = self._link_widgets[new_index]
-            link_widget.add_class("-selected")
-            link_widget.refresh()
-
-            # Scroll to the link after refresh to ensure layout is complete
-            self.call_after_refresh(self._scroll_to_link, link_widget)
+        new_widget = self._get_link_widget(new_index)
+        if new_widget:
+            new_widget.add_class("-selected")
+            # Skip scroll on initial content load (we want to show top of page)
+            if not self._skip_initial_scroll:
+                self.call_after_refresh(self._scroll_to_link, new_widget)
