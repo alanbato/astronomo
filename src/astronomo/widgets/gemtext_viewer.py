@@ -1,7 +1,5 @@
 """GemtextViewer widget for displaying interactive Gemtext content."""
 
-from pathlib import Path
-
 from textual.containers import VerticalScroll
 from textual.message import Message
 from textual.reactive import reactive
@@ -211,8 +209,6 @@ class GemtextViewer(VerticalScroll):
     - Mouse click support
     - Smart label display (label if present, else URL)
     """
-
-    CSS_PATH = Path("gemtext_viewer.tcss")
 
     BINDINGS = [
         ("left", "prev_link", "Prev Link"),
