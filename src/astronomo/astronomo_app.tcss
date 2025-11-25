@@ -1,14 +1,14 @@
 #nav-bar {
-        dock: top;
-        height: auto;
-        width: 100%;
-    }
+    dock: top;
+    height: auto;
+    width: 100%;
+}
 
 #back-button, #forward-button {
     min-width: 4;
     margin: 0 1;
     background: $surface;
-    content-align: center;
+    content-align: center top;
 }
 
 #url-input {
@@ -18,15 +18,31 @@
     padding-left: 1;
 }
 
+#main-content {
+    height: 1fr;
+    width: 100%;
+}
 
 #content {
-    height: 1fr;
+    width: 1fr;
+    height: 100%;
     link-color: $text-accent;
     link-background-hover: $accent-muted;
     link-style: none;
     link-style-hover: underline;
     link-color-hover: $text-accent;
     padding: 1;
-
     border: heavy $primary;
+}
+
+/* Bookmarks Sidebar */
+#bookmarks-sidebar {
+    width: 30;
+    height: 100%;
+    border-left: solid $primary;
+    display: none;
+}
+
+#bookmarks-sidebar.-visible {
+    display: block;
 }

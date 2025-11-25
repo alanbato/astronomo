@@ -7,10 +7,16 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Button, Footer, Header, Input
 
+from astronomo.bookmarks import Bookmark, BookmarkManager, Folder
 from astronomo.history import HistoryEntry, HistoryManager
-from astronomo.parser import parse_gemtext
+from astronomo.parser import LineType, parse_gemtext
 from astronomo.response_handler import format_response
-from astronomo.widgets import GemtextViewer
+from astronomo.widgets import (
+    AddBookmarkModal,
+    BookmarksSidebar,
+    EditItemModal,
+    GemtextViewer,
+)
 
 # Register gemini as a valid URL scheme for proper urljoin behavior
 if "gemini" not in uses_relative:
@@ -27,12 +33,15 @@ class Astronomo(App[None]):
     BINDINGS = [
         ("ctrl+q", "quit", "Quit"),
         ("ctrl+r", "refresh", "Refresh"),
+        ("ctrl+b", "toggle_bookmarks", "Bookmarks"),
+        ("ctrl+d", "add_bookmark", "Add Bookmark"),
     ]
 
     def __init__(self, initial_url: str | None = None, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.current_url: str = ""
         self.history = HistoryManager(max_size=100)
+        self.bookmarks = BookmarkManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url  # Store for use in on_mount
 
@@ -46,7 +55,9 @@ class Astronomo(App[None]):
                 placeholder="Enter a Gemini URL (e.g., gemini://geminiprotocol.net/)",
                 id="url-input",
             )
-        yield GemtextViewer(id="content")
+        with Horizontal(id="main-content"):
+            yield GemtextViewer(id="content")
+            yield BookmarksSidebar(self.bookmarks, id="bookmarks-sidebar")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -261,6 +272,103 @@ class Astronomo(App[None]):
         if entry:
             self._restore_from_history(entry)
             self._update_navigation_buttons()
+
+    # --- Bookmarks ---
+
+    def action_toggle_bookmarks(self) -> None:
+        """Toggle the bookmarks sidebar visibility."""
+        sidebar = self.query_one("#bookmarks-sidebar", BookmarksSidebar)
+        sidebar.toggle_class("-visible")
+        if sidebar.has_class("-visible"):
+            sidebar.focus()
+
+    def action_add_bookmark(self) -> None:
+        """Open the Add Bookmark modal for the current page."""
+        if not self.current_url:
+            return
+
+        # Try to get a title from the current page content
+        suggested_title = self._get_page_title() or self.current_url
+
+        def handle_result(bookmark: Bookmark | None) -> None:
+            if bookmark:
+                # Refresh the sidebar to show the new bookmark
+                sidebar = self.query_one("#bookmarks-sidebar", BookmarksSidebar)
+                sidebar.refresh_tree()
+
+        self.push_screen(
+            AddBookmarkModal(
+                manager=self.bookmarks,
+                url=self.current_url,
+                suggested_title=suggested_title,
+            ),
+            handle_result,
+        )
+
+    def _get_page_title(self) -> str | None:
+        """Extract the page title from the current content (first H1)."""
+        viewer = self.query_one("#content", GemtextViewer)
+        for line in viewer.lines:
+            if line.line_type == LineType.HEADING_1:
+                return line.content
+        return None
+
+    def on_bookmarks_sidebar_bookmark_selected(
+        self, message: BookmarksSidebar.BookmarkSelected
+    ) -> None:
+        """Handle bookmark selection from sidebar."""
+        url = message.bookmark.url
+
+        # Update URL input and navigate
+        url_input = self.query_one("#url-input", Input)
+        url_input.value = url
+        self.get_url(url)
+
+    def on_bookmarks_sidebar_delete_requested(
+        self, message: BookmarksSidebar.DeleteRequested
+    ) -> None:
+        """Handle delete request from sidebar."""
+        item = message.item
+        if isinstance(item, Bookmark):
+            self.bookmarks.remove_bookmark(item.id)
+        elif isinstance(item, Folder):
+            self.bookmarks.remove_folder(item.id)
+
+        # Refresh sidebar
+        sidebar = self.query_one("#bookmarks-sidebar", BookmarksSidebar)
+        sidebar.refresh_tree()
+
+    def on_bookmarks_sidebar_edit_requested(
+        self, message: BookmarksSidebar.EditRequested
+    ) -> None:
+        """Handle edit request from sidebar."""
+
+        def handle_result(changed: bool | None) -> None:
+            if changed:
+                # Refresh the sidebar to show the updated name
+                sidebar = self.query_one("#bookmarks-sidebar", BookmarksSidebar)
+                sidebar.refresh_tree()
+
+        self.push_screen(
+            EditItemModal(
+                manager=self.bookmarks,
+                item=message.item,
+            ),
+            handle_result,
+        )
+
+    def on_bookmarks_sidebar_new_folder_requested(
+        self, message: BookmarksSidebar.NewFolderRequested
+    ) -> None:
+        """Handle new folder request from sidebar."""
+        # For now, create a folder with a default name
+        # TODO: Implement folder name input modal
+        folder_count = len(self.bookmarks.folders) + 1
+        self.bookmarks.add_folder(f"New Folder {folder_count}")
+
+        # Refresh sidebar
+        sidebar = self.query_one("#bookmarks-sidebar", BookmarksSidebar)
+        sidebar.refresh_tree()
 
 
 if __name__ == "__main__":

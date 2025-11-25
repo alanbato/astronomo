@@ -10,6 +10,7 @@ requires-python = ">=3.10"
 dependencies = [
     "nauyaca>=0.1.0",
     "textual[syntax]>=6.6.0",
+    "tomli-w>=1.0.0",
     "typer>=0.20.0",
 ]
 
