@@ -1,0 +1,246 @@
+"""Configuration management for Astronomo.
+
+This module provides configuration storage with TOML persistence
+and sensible defaults.
+"""
+
+import tomllib
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Self
+
+import tomli_w
+
+# Available Textual themes (built-in)
+VALID_THEMES = frozenset(
+    {
+        "textual-dark",
+        "textual-light",
+        "textual-ansi",
+        "nord",
+        "gruvbox",
+        "tokyo-night",
+        "monokai",
+        "dracula",
+        "catppuccin-mocha",
+        "solarized-light",
+    }
+)
+
+# Default config template with comments (used for first-run creation)
+DEFAULT_CONFIG_TEMPLATE = """\
+# Astronomo Configuration
+# This file is auto-generated on first run.
+# Edit to customize your Astronomo experience.
+
+[appearance]
+# Theme for the application UI
+# Available themes: textual-dark, textual-light, textual-ansi, nord,
+#                   gruvbox, tokyo-night, monokai, dracula,
+#                   catppuccin-mocha, solarized-light
+theme = "textual-dark"
+
+[browsing]
+# Default home page when launching without a URL argument
+# Uncomment and set to your preferred start page:
+# home_page = "gemini://geminiprotocol.net/"
+
+# Request timeout in seconds
+timeout = 30
+
+# Maximum number of redirects to follow
+max_redirects = 5
+"""
+
+
+@dataclass
+class AppearanceConfig:
+    """Appearance settings.
+
+    Attributes:
+        theme: Textual theme name (e.g., "textual-dark", "nord", "gruvbox")
+    """
+
+    theme: str = "textual-dark"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for TOML serialization."""
+        return {"theme": self.theme}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create from dictionary with validation and fallback to defaults."""
+        defaults = cls()
+        theme = data.get("theme", defaults.theme)
+        # Validate theme - fall back to default if invalid
+        if not isinstance(theme, str) or theme not in VALID_THEMES:
+            theme = defaults.theme
+        return cls(theme=theme)
+
+
+@dataclass
+class BrowsingConfig:
+    """Browsing behavior settings.
+
+    Attributes:
+        home_page: Default home page URL (None if not set)
+        timeout: Request timeout in seconds
+        max_redirects: Maximum number of redirects to follow
+    """
+
+    home_page: str | None = None
+    timeout: int = 30
+    max_redirects: int = 5
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for TOML serialization."""
+        data: dict[str, Any] = {
+            "timeout": self.timeout,
+            "max_redirects": self.max_redirects,
+        }
+        if self.home_page is not None:
+            data["home_page"] = self.home_page
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create from dictionary with validation and fallback to defaults."""
+        defaults = cls()
+
+        home_page = data.get("home_page")
+        # Empty string or non-string treated as None (not set)
+        if not isinstance(home_page, str) or not home_page.strip():
+            home_page = None
+
+        timeout = data.get("timeout", defaults.timeout)
+        if not isinstance(timeout, int) or timeout <= 0:
+            timeout = defaults.timeout
+
+        max_redirects = data.get("max_redirects", defaults.max_redirects)
+        if not isinstance(max_redirects, int) or max_redirects < 0:
+            max_redirects = defaults.max_redirects
+
+        return cls(
+            home_page=home_page,
+            timeout=timeout,
+            max_redirects=max_redirects,
+        )
+
+
+@dataclass
+class Config:
+    """Root configuration container.
+
+    Attributes:
+        appearance: Visual appearance settings
+        browsing: Browsing behavior settings
+    """
+
+    appearance: AppearanceConfig = field(default_factory=AppearanceConfig)
+    browsing: BrowsingConfig = field(default_factory=BrowsingConfig)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for TOML serialization."""
+        return {
+            "appearance": self.appearance.to_dict(),
+            "browsing": self.browsing.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create from dictionary with fallback to defaults for missing sections."""
+        return cls(
+            appearance=AppearanceConfig.from_dict(data.get("appearance", {})),
+            browsing=BrowsingConfig.from_dict(data.get("browsing", {})),
+        )
+
+
+class ConfigManager:
+    """Manages application configuration with TOML persistence.
+
+    Provides loading and saving of configuration with automatic creation
+    of default config file on first run.
+
+    Args:
+        config_path: Path to the config file. If None, uses the default
+                    location (~/.config/astronomo/config.toml)
+    """
+
+    VERSION = "1.0"
+
+    def __init__(self, config_path: Path | None = None):
+        if config_path is not None:
+            self.config_path = config_path
+            self.config_dir = config_path.parent
+        else:
+            self.config_dir = Path.home() / ".config" / "astronomo"
+            self.config_path = self.config_dir / "config.toml"
+
+        self.config: Config = Config()
+        self._load()
+
+    def _ensure_config_dir(self) -> None:
+        """Create config directory if it doesn't exist."""
+        self.config_dir.mkdir(parents=True, exist_ok=True)
+
+    def _load(self) -> None:
+        """Load configuration from TOML file, creating default if needed."""
+        if not self.config_path.exists():
+            self._create_default_config()
+            return
+
+        try:
+            with open(self.config_path, "rb") as f:
+                data = tomllib.load(f)
+            self.config = Config.from_dict(data)
+        except (tomllib.TOMLDecodeError, OSError):
+            # If file is corrupted or unreadable, use defaults
+            self.config = Config()
+
+    def _create_default_config(self) -> None:
+        """Create default config file with comments."""
+        self._ensure_config_dir()
+
+        # Write the template directly to preserve comments
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            f.write(DEFAULT_CONFIG_TEMPLATE)
+
+        # Load the defaults into memory
+        self.config = Config()
+
+    def save(self) -> None:
+        """Save current configuration to TOML file.
+
+        Note: This will overwrite the file without comments.
+        Use sparingly - prefer the commented template format.
+        """
+        self._ensure_config_dir()
+
+        data = {
+            "version": self.VERSION,
+            **self.config.to_dict(),
+        }
+
+        with open(self.config_path, "wb") as f:
+            tomli_w.dump(data, f)
+
+    # Convenience properties for easy access
+    @property
+    def theme(self) -> str:
+        """Get the configured theme name."""
+        return self.config.appearance.theme
+
+    @property
+    def home_page(self) -> str | None:
+        """Get the configured home page URL, or None if not set."""
+        return self.config.browsing.home_page
+
+    @property
+    def timeout(self) -> int:
+        """Get the configured request timeout."""
+        return self.config.browsing.timeout
+
+    @property
+    def max_redirects(self) -> int:
+        """Get the configured max redirects."""
+        return self.config.browsing.max_redirects

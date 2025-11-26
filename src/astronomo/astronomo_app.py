@@ -8,6 +8,7 @@ from textual.containers import Horizontal
 from textual.widgets import Button, Footer, Header, Input
 
 from astronomo.bookmarks import Bookmark, BookmarkManager, Folder
+from astronomo.config import ConfigManager
 from astronomo.history import HistoryEntry, HistoryManager
 from astronomo.parser import LineType, parse_gemtext
 from astronomo.response_handler import format_response
@@ -37,8 +38,21 @@ class Astronomo(App[None]):
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
     ]
 
-    def __init__(self, initial_url: str | None = None, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        initial_url: str | None = None,
+        config_path: Path | None = None,
+        *args,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
+
+        # Load configuration FIRST (before other managers)
+        self.config_manager = ConfigManager(config_path=config_path)
+
+        # Apply theme from config
+        self.theme = self.config_manager.theme
+
         self.current_url: str = ""
         self.history = HistoryManager(max_size=100)
         self.bookmarks = BookmarkManager()
@@ -123,8 +137,11 @@ class Astronomo(App[None]):
             self._update_current_history_state()
 
         try:
-            # Fetch the Gemini resource
-            async with GeminiClient(timeout=30, max_redirects=5) as client:
+            # Fetch the Gemini resource using configured values
+            async with GeminiClient(
+                timeout=self.config_manager.timeout,
+                max_redirects=self.config_manager.max_redirects,
+            ) as client:
                 response = await client.get(url)
 
             # Store current URL for relative link resolution
@@ -152,9 +169,10 @@ class Astronomo(App[None]):
                 self.history.push(entry)
                 self._update_navigation_buttons()
         except asyncio.TimeoutError:
+            timeout = self.config_manager.timeout
             error_text = (
                 f"# Timeout Error\n\n"
-                f"The request to {url} timed out after 30 seconds.\n\n"
+                f"The request to {url} timed out after {timeout} seconds.\n\n"
                 f"The server may be down or not responding. Please try again later."
             )
             viewer.update_content(parse_gemtext(error_text))

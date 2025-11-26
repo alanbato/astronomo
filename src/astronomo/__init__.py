@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import typer
+
 from astronomo.astronomo_app import Astronomo
 
 cli = typer.Typer(
@@ -14,9 +17,15 @@ def run(
         None,
         help="Gemini URL to open on startup (e.g., gemini://geminiprotocol.net/)",
     ),
+    config: Path | None = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to config file (default: ~/.config/astronomo/config.toml)",
+    ),
 ) -> None:
     """Launch Astronomo, optionally opening a Gemini URL."""
-    astronomo_app = Astronomo(initial_url=url)
+    astronomo_app = Astronomo(initial_url=url, config_path=config)
     astronomo_app.run()
 
 
