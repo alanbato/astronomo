@@ -1,5 +1,12 @@
 from pathlib import Path
-from urllib.parse import urljoin, uses_netloc, uses_relative
+from urllib.parse import (
+    quote,
+    urljoin,
+    urlparse,
+    urlunparse,
+    uses_netloc,
+    uses_relative,
+)
 
 from nauyaca.client import GeminiClient
 from textual import work
@@ -17,6 +24,7 @@ from astronomo.widgets import (
     BookmarksSidebar,
     EditItemModal,
     GemtextViewer,
+    InputModal,
 )
 
 # Register gemini as a valid URL scheme for proper urljoin behavior
@@ -24,6 +32,22 @@ if "gemini" not in uses_relative:
     uses_relative.append("gemini")
 if "gemini" not in uses_netloc:
     uses_netloc.append("gemini")
+
+
+def build_query_url(base_url: str, query: str) -> str:
+    """Build URL with query string, replacing any existing query.
+
+    Args:
+        base_url: The base URL (may already have a query string)
+        query: The user input to encode and append
+
+    Returns:
+        URL with the encoded query string
+    """
+    parsed = urlparse(base_url)
+    encoded_query = quote(query)
+    new_url = urlunparse(parsed._replace(query=encoded_query))
+    return new_url
 
 
 class Astronomo(App[None]):
@@ -144,6 +168,17 @@ class Astronomo(App[None]):
             ) as client:
                 response = await client.get(url)
 
+            # Check for input request (status 10/11) BEFORE formatting
+            if 10 <= response.status < 20:
+                # Schedule modal to show after worker completes
+                self.call_later(
+                    self._handle_input_request,
+                    url,
+                    response.meta or "Input required",
+                    response.status == 11,  # sensitive input
+                )
+                return  # Don't continue to format_response
+
             # Store current URL for relative link resolution
             self.current_url = url
 
@@ -215,6 +250,29 @@ class Astronomo(App[None]):
 
         # Re-fetch the current URL without adding to history
         self.get_url(self.current_url, add_to_history=False)
+
+    def _handle_input_request(self, url: str, prompt: str, sensitive: bool) -> None:
+        """Handle a status 10/11 input request by showing modal.
+
+        Args:
+            url: The URL that requested input
+            prompt: The prompt text from the server
+            sensitive: True for status 11 (password/sensitive input)
+        """
+
+        def handle_input_result(user_input: str | None) -> None:
+            if user_input is not None:
+                # Build new URL with query and fetch
+                new_url = build_query_url(url, user_input)
+                url_input = self.query_one("#url-input", Input)
+                url_input.value = new_url
+                self.get_url(new_url)
+            # If None (cancelled), stay on current page - do nothing
+
+        self.push_screen(
+            InputModal(prompt=prompt, url=url, sensitive=sensitive),
+            handle_input_result,
+        )
 
     def _update_current_history_state(self) -> None:
         """Update the current history entry with current scroll/link state."""

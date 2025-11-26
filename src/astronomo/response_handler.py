@@ -51,12 +51,16 @@ def _format_redirect_response(response: GeminiResponse) -> list[GemtextLine]:
 
 
 def _format_input_response(response: GeminiResponse) -> list[GemtextLine]:
-    """Format an input request response."""
+    """Format an input request response (fallback display).
+
+    This is shown if input handling fails to trigger the modal.
+    """
     prompt = response.meta or "Input required"
+    status_type = "sensitive " if response.status == 11 else ""
     gemtext = (
         f"# Input Required\n\n"
-        f"Prompt: {prompt}\n\n"
-        f"(Interactive input not yet implemented)"
+        f"The server is requesting {status_type}input.\n\n"
+        f"Prompt: {prompt}"
     )
     return parse_gemtext(gemtext)
 
