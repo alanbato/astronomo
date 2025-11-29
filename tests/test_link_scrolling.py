@@ -62,14 +62,15 @@ class TestLinkScrolling:
             assert len(viewer._link_widgets) > 0, "Page should have links"
 
             # Navigate through links (up to 9 links if available)
+            # Note: On initial page load, scroll is at top (not at first link),
+            # so we start by navigating to trigger scroll-to-link behavior
             max_links = min(9, len(viewer._link_widgets))
             for i in range(max_links):
-                # Press right to go to next link (first press selects link 1)
-                if i > 0:
-                    await pilot.press("right")
-                    await pilot.pause()
+                # Press right to navigate (this triggers scroll-to-link)
+                await pilot.press("right")
+                await pilot.pause()
 
-                # Verify the current link is visible
+                # Verify the current link is visible after navigation
                 link_widget = viewer._link_widgets[viewer.current_link_index]
                 assert is_link_visible(viewer, viewer.current_link_index), (
                     f"Link {viewer.current_link_index} should be visible "

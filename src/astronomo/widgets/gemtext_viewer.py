@@ -339,20 +339,24 @@ class GemtextViewer(VerticalScroll):
 
     def _scroll_to_link(self, link_widget: GemtextLinkWidget) -> None:
         """Scroll to make the link widget visible."""
-        # Check if link is already visible (with some padding)
         link_top = link_widget.virtual_region.y
         link_bottom = link_top + link_widget.virtual_region.height
         viewport_top = self.scroll_y
         viewport_height = self.scrollable_content_region.height
         viewport_bottom = viewport_top + viewport_height
 
-        padding = 3  # lines of context
+        padding = 3  # lines of context when scrolling
 
-        # Only scroll if the link is not fully visible with padding
-        if link_top < viewport_top + padding:
+        # Only scroll if the link is not fully visible (ignore padding for this check)
+        link_fully_visible = link_top >= viewport_top and link_bottom <= viewport_bottom
+        if link_fully_visible:
+            return  # No need to scroll
+
+        # Link is not fully visible, scroll to show it with padding for context
+        if link_top < viewport_top:
             # Link is above viewport - scroll up to show it with padding
             self.scroll_to(y=max(0, link_top - padding), animate=False, force=True)
-        elif link_bottom > viewport_bottom - padding:
+        else:
             # Link is below viewport - scroll down to show it with padding
             target_y = link_bottom - viewport_height + padding
             self.scroll_to(y=max(0, target_y), animate=False, force=True)
