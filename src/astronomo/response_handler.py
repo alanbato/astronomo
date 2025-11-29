@@ -22,6 +22,12 @@ def format_response(url: str, response: GeminiResponse) -> list[GemtextLine]:
         return _format_redirect_response(response)
     elif 10 <= response.status < 20:
         return _format_input_response(response)
+    elif response.status == 60:
+        return _format_certificate_required(response)
+    elif response.status == 61:
+        return _format_certificate_not_authorized(response)
+    elif response.status == 62:
+        return _format_certificate_not_valid(response)
     else:
         return _format_error_response(response)
 
@@ -39,13 +45,13 @@ def _format_success_response(url: str, response: GeminiResponse) -> list[Gemtext
 
 
 def _format_redirect_response(response: GeminiResponse) -> list[GemtextLine]:
-    """Format a redirect response."""
+    """Format a redirect response (fallback if redirect can't be followed)."""
     redirect_url = response.redirect_url or "(no redirect URL)"
     gemtext = (
         f"# Redirect\n\n"
         f"Status: {response.status}\n"
         f"Redirect to: {redirect_url}\n\n"
-        f"Following redirects automatically..."
+        f"Unable to follow redirect automatically."
     )
     return parse_gemtext(gemtext)
 
@@ -69,4 +75,46 @@ def _format_error_response(response: GeminiResponse) -> list[GemtextLine]:
     """Format an error response."""
     error_msg = response.meta or "Unknown error"
     gemtext = f"# Error\n\nStatus: {response.status}\nMessage: {error_msg}"
+    return parse_gemtext(gemtext)
+
+
+def _format_certificate_required(response: GeminiResponse) -> list[GemtextLine]:
+    """Format certificate required response (status 60).
+
+    This is a fallback display if the modal doesn't trigger.
+    """
+    message = response.meta or "A client certificate is required"
+    gemtext = (
+        f"# Certificate Required\n\n"
+        f"This page requires a client certificate for authentication.\n\n"
+        f"Server message: {message}"
+    )
+    return parse_gemtext(gemtext)
+
+
+def _format_certificate_not_authorized(response: GeminiResponse) -> list[GemtextLine]:
+    """Format certificate not authorized response (status 61).
+
+    This is a fallback display if the modal doesn't trigger.
+    """
+    message = response.meta or "Certificate not authorized"
+    gemtext = (
+        f"# Certificate Not Authorized\n\n"
+        f"The server rejected your client certificate.\n\n"
+        f"Server message: {message}"
+    )
+    return parse_gemtext(gemtext)
+
+
+def _format_certificate_not_valid(response: GeminiResponse) -> list[GemtextLine]:
+    """Format certificate not valid response (status 62).
+
+    This is a fallback display if the modal doesn't trigger.
+    """
+    message = response.meta or "Certificate not valid"
+    gemtext = (
+        f"# Certificate Not Valid\n\n"
+        f"Your client certificate is invalid or has expired.\n\n"
+        f"Server message: {message}"
+    )
     return parse_gemtext(gemtext)

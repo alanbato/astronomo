@@ -17,6 +17,7 @@ from textual.widgets import Button, Footer, Header, Input
 from astronomo.bookmarks import Bookmark, BookmarkManager, Folder
 from astronomo.config import ConfigManager
 from astronomo.history import HistoryEntry, HistoryManager
+from astronomo.identities import Identity, IdentityManager
 from astronomo.parser import LineType, parse_gemtext
 from astronomo.response_handler import format_response
 from astronomo.widgets import (
@@ -24,6 +25,10 @@ from astronomo.widgets import (
     BookmarksSidebar,
     EditItemModal,
     GemtextViewer,
+    IdentityErrorModal,
+    IdentityErrorResult,
+    IdentityResult,
+    IdentitySelectModal,
     InputModal,
 )
 
@@ -80,6 +85,7 @@ class Astronomo(App[None]):
         self.current_url: str = ""
         self.history = HistoryManager(max_size=100)
         self.bookmarks = BookmarkManager()
+        self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url  # Store for use in on_mount
 
@@ -145,12 +151,18 @@ class Astronomo(App[None]):
         self.get_url(url)
 
     @work(exclusive=True)
-    async def get_url(self, url: str, add_to_history: bool = True) -> None:
+    async def get_url(
+        self,
+        url: str,
+        add_to_history: bool = True,
+        identity: Identity | None = None,
+    ) -> None:
         """Fetch and display a Gemini resource.
 
         Args:
             url: The URL to fetch
             add_to_history: Whether to add this fetch to history (default True)
+            identity: Optional identity to use (overrides auto-selection)
         """
         import asyncio
 
@@ -160,12 +172,22 @@ class Astronomo(App[None]):
         if not self._navigating_history and add_to_history:
             self._update_current_history_state()
 
+        # Determine which identity to use (if any)
+        selected_identity = identity or self.identities.get_identity_for_url(url)
+
+        # Build client arguments
+        client_kwargs: dict = {
+            "timeout": self.config_manager.timeout,
+            "max_redirects": self.config_manager.max_redirects,
+        }
+
+        if selected_identity:
+            client_kwargs["client_cert"] = selected_identity.cert_path
+            client_kwargs["client_key"] = selected_identity.key_path
+
         try:
             # Fetch the Gemini resource using configured values
-            async with GeminiClient(
-                timeout=self.config_manager.timeout,
-                max_redirects=self.config_manager.max_redirects,
-            ) as client:
+            async with GeminiClient(**client_kwargs) as client:
                 response = await client.get(url)
 
             # Check for input request (status 10/11) BEFORE formatting
@@ -178,6 +200,49 @@ class Astronomo(App[None]):
                     response.status == 11,  # sensitive input
                 )
                 return  # Don't continue to format_response
+
+            # Handle certificate required (status 60)
+            if response.status == 60:
+                self.call_later(
+                    self._handle_certificate_required,
+                    url,
+                    response.meta or "Certificate required",
+                )
+                return
+
+            # Handle certificate not authorized (status 61)
+            if response.status == 61:
+                self.call_later(
+                    self._handle_certificate_not_authorized,
+                    url,
+                    response.meta or "Not authorized",
+                    selected_identity,
+                )
+                return
+
+            # Handle certificate not valid (status 62)
+            if response.status == 62:
+                self.call_later(
+                    self._handle_certificate_not_valid,
+                    url,
+                    response.meta or "Certificate not valid",
+                    selected_identity,
+                )
+                return
+
+            # Handle redirects that weren't followed automatically
+            # (e.g., when max_redirects was exceeded or redirect failed)
+            if response.is_redirect() and response.redirect_url:
+                redirect_url = response.redirect_url
+                # Resolve relative redirect URLs
+                if not redirect_url.startswith("gemini://"):
+                    redirect_url = urljoin(url, redirect_url)
+                # Update URL bar
+                url_input = self.query_one("#url-input", Input)
+                url_input.value = redirect_url
+                # Follow the redirect (let the new URL determine if a cert is needed)
+                self.get_url(redirect_url, add_to_history=add_to_history)
+                return
 
             # Store current URL for relative link resolution
             self.current_url = url
@@ -272,6 +337,97 @@ class Astronomo(App[None]):
         self.push_screen(
             InputModal(prompt=prompt, url=url, sensitive=sensitive),
             handle_input_result,
+        )
+
+    def _handle_certificate_required(self, url: str, message: str) -> None:
+        """Handle status 60: certificate required.
+
+        Args:
+            url: The URL that requires authentication
+            message: The server's META message
+        """
+
+        def handle_result(result: IdentityResult | None) -> None:
+            if result is not None:
+                # Remember the URL prefix if requested
+                if result.remember:
+                    parsed = urlparse(url)
+                    url_prefix = f"{parsed.scheme}://{parsed.netloc}/"
+                    self.identities.add_url_prefix(result.identity.id, url_prefix)
+
+                # Retry with the selected identity
+                self.get_url(url, identity=result.identity)
+
+        self.push_screen(
+            IdentitySelectModal(
+                manager=self.identities,
+                url=url,
+                message=message,
+            ),
+            handle_result,
+        )
+
+    def _handle_certificate_not_authorized(
+        self, url: str, message: str, current_identity: Identity | None
+    ) -> None:
+        """Handle status 61: certificate not authorized.
+
+        Args:
+            url: The URL that rejected the certificate
+            message: The server's META message
+            current_identity: The identity that was used (if any)
+        """
+
+        def handle_result(result: IdentityErrorResult | None) -> None:
+            if result is None:
+                return
+
+            if result.action == "switch" and result.identity is not None:
+                # Retry with the new identity
+                self.get_url(url, identity=result.identity)
+
+        self.push_screen(
+            IdentityErrorModal(
+                manager=self.identities,
+                url=url,
+                message=message,
+                error_type="not_authorized",
+                current_identity=current_identity,
+            ),
+            handle_result,
+        )
+
+    def _handle_certificate_not_valid(
+        self, url: str, message: str, current_identity: Identity | None
+    ) -> None:
+        """Handle status 62: certificate not valid.
+
+        Args:
+            url: The URL that reported the invalid certificate
+            message: The server's META message
+            current_identity: The identity that was used (if any)
+        """
+
+        def handle_result(result: IdentityErrorResult | None) -> None:
+            if result is None:
+                return
+
+            if result.action == "regenerate" and result.identity is not None:
+                # Retry with the regenerated identity
+                self.get_url(url, identity=result.identity)
+            elif result.action == "switch" and result.identity is not None:
+                # Retry with the new identity
+                self.get_url(url, identity=result.identity)
+
+        self.push_screen(
+            IdentityErrorModal(
+                manager=self.identities,
+                url=url,
+                message=message,
+                error_type="not_valid",
+                current_identity=current_identity,
+            ),
+            handle_result,
         )
 
     def _update_current_history_state(self) -> None:
