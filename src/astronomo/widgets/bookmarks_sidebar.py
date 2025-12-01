@@ -108,12 +108,6 @@ class BookmarksSidebar(Container):
         display: block;
     }
 
-    BookmarksSidebar .sidebar-header {
-        text-style: bold;
-        padding: 0 1;
-        background: $surface;
-        width: 100%;
-    }
 
     BookmarksSidebar .sidebar-content {
         height: 1fr;
@@ -138,6 +132,8 @@ class BookmarksSidebar(Container):
 
     # Currently selected item index
     selected_index: reactive[int] = reactive(0, init=False)
+
+    BORDER_TITLE = "Bookmarks"
 
     class BookmarkSelected(Message):
         """Emitted when a bookmark is selected to open."""
@@ -172,7 +168,6 @@ class BookmarksSidebar(Container):
 
     def compose(self):
         """Compose the sidebar UI."""
-        yield Static("Bookmarks", classes="sidebar-header")
         yield VerticalScroll(classes="sidebar-content")
 
     def on_mount(self) -> None:

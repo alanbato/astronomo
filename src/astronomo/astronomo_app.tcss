@@ -16,6 +16,7 @@
     background: $surface;
     margin: 0;
     padding-left: 1;
+    border: tall $primary;
 }
 
 #main-content {
@@ -32,15 +33,16 @@
     link-style-hover: underline;
     link-color-hover: $text-accent;
     padding: 1;
-    border: heavy $primary;
+    border: round $primary;
 }
 
 /* Bookmarks Sidebar */
 #bookmarks-sidebar {
     width: 30;
     height: 100%;
-    border-left: solid $primary;
+    border: solid $primary;
     display: none;
+    border-title-align: left;
 }
 
 #bookmarks-sidebar.-visible {

@@ -1,5 +1,6 @@
 """GemtextViewer widget for displaying interactive Gemtext content."""
 
+from rich.text import Text
 from textual.containers import VerticalScroll
 from textual.message import Message
 from textual.reactive import reactive
@@ -114,8 +115,8 @@ class GemtextPreformattedWidget(GemtextLineWidget):
     }
     """
 
-    def render(self) -> str:
-        return self.line.content
+    def render(self) -> Text:
+        return Text.from_ansi(self.line.content)
 
 
 class GemtextLinkWidget(GemtextLineWidget):

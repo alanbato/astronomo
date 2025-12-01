@@ -96,7 +96,6 @@ class Astronomo(App[None]):
             yield Button("◀", id="back-button", disabled=True)
             yield Button("▶", id="forward-button", disabled=True)
             yield Input(
-                placeholder="Enter a Gemini URL (e.g., gemini://geminiprotocol.net/)",
                 id="url-input",
             )
         with Horizontal(id="main-content"):
