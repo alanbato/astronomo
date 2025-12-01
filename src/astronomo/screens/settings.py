@@ -8,7 +8,11 @@ from textual.containers import Container
 from textual.screen import ModalScreen
 from textual.widgets import Static, TabbedContent, TabPane
 
-from astronomo.widgets.settings import AppearanceSettings, BrowsingSettings
+from astronomo.widgets.settings import (
+    AppearanceSettings,
+    BrowsingSettings,
+    CertificatesSettings,
+)
 
 if TYPE_CHECKING:
     from astronomo.astronomo_app import Astronomo
@@ -54,12 +58,14 @@ class SettingsScreen(ModalScreen[None]):
         padding: 1;
     }
 
-    AppearanceSettings, BrowsingSettings {
+    AppearanceSettings, BrowsingSettings, CertificatesSettings {
         height: 1fr;
         width: 1fr;
     }
 
-    AppearanceSettings VerticalScroll, BrowsingSettings VerticalScroll {
+    AppearanceSettings VerticalScroll,
+    BrowsingSettings VerticalScroll,
+    CertificatesSettings VerticalScroll {
         height: 1fr;
     }
 
@@ -85,6 +91,8 @@ class SettingsScreen(ModalScreen[None]):
                     yield AppearanceSettings(app.config_manager)
                 with TabPane("Browsing", id="tab-browsing"):
                     yield BrowsingSettings(app.config_manager)
+                with TabPane("Certificates", id="tab-certificates"):
+                    yield CertificatesSettings(app.identities)
             yield Static("Press Escape or Ctrl+, to close", id="settings-hint")
 
     def action_dismiss_settings(self) -> None:
