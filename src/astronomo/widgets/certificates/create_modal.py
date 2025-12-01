@@ -1,5 +1,7 @@
 """Create Identity modal for Astronomo."""
 
+from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
@@ -16,55 +18,7 @@ class CreateIdentityModal(ModalScreen[Identity | None]):
         manager: IdentityManager instance
     """
 
-    DEFAULT_CSS = """
-    CreateIdentityModal {
-        align: center middle;
-    }
-
-    CreateIdentityModal > Container {
-        width: 60;
-        height: auto;
-        border: thick $primary;
-        background: $surface;
-        padding: 1 2;
-    }
-
-    CreateIdentityModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
-    }
-
-    CreateIdentityModal .field-label {
-        padding: 1 0 0 0;
-    }
-
-    CreateIdentityModal .field-hint {
-        color: $text-muted;
-        text-style: italic;
-        padding: 0 0 1 0;
-    }
-
-    CreateIdentityModal Input {
-        width: 100%;
-    }
-
-    CreateIdentityModal Select {
-        width: 100%;
-    }
-
-    CreateIdentityModal .button-row {
-        width: 100%;
-        height: auto;
-        align: right middle;
-        padding-top: 1;
-    }
-
-    CreateIdentityModal .button-row Button {
-        margin-left: 1;
-    }
-    """
+    CSS_PATH = Path(__file__).parent / "certificates.tcss"
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=False, priority=True),
@@ -137,7 +91,7 @@ class CreateIdentityModal(ModalScreen[Identity | None]):
         if not hostname:
             hostname = "localhost"
 
-        validity_select = self.query_one("#validity-select", Select[int])
+        validity_select = self.query_one("#validity-select", Select)
         validity_value = validity_select.value
         valid_days = validity_value if isinstance(validity_value, int) else 365
 

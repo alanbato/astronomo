@@ -1,5 +1,7 @@
 """Manage URLs modal for Astronomo."""
 
+from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, VerticalScroll
@@ -63,74 +65,7 @@ class ManageUrlsModal(ModalScreen[None]):
         identity: The identity to manage URLs for
     """
 
-    DEFAULT_CSS = """
-    ManageUrlsModal {
-        align: center middle;
-    }
-
-    ManageUrlsModal > Container {
-        width: 65;
-        height: auto;
-        max-height: 80%;
-        border: thick $primary;
-        background: $surface;
-        padding: 1 2;
-    }
-
-    ManageUrlsModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
-    }
-
-    ManageUrlsModal .identity-name {
-        color: $text-muted;
-        text-align: center;
-        padding-bottom: 1;
-    }
-
-    ManageUrlsModal .section-label {
-        padding: 1 0 0 0;
-        text-style: bold;
-    }
-
-    ManageUrlsModal .url-list {
-        width: 100%;
-        height: auto;
-        max-height: 15;
-        border: solid $primary;
-        margin: 1 0;
-    }
-
-    ManageUrlsModal .no-urls {
-        width: 100%;
-        padding: 1;
-        color: $text-muted;
-        text-align: center;
-    }
-
-    ManageUrlsModal .add-section {
-        padding: 1 0;
-    }
-
-    ManageUrlsModal .add-row {
-        height: auto;
-        align: left middle;
-    }
-
-    ManageUrlsModal .add-row Input {
-        width: 1fr;
-        margin-right: 1;
-    }
-
-    ManageUrlsModal .button-row {
-        width: 100%;
-        height: auto;
-        align: right middle;
-        padding-top: 1;
-    }
-    """
+    CSS_PATH = Path(__file__).parent / "certificates.tcss"
 
     BINDINGS = [
         Binding("escape", "close", "Close", show=False, priority=True),

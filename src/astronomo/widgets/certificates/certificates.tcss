@@ -1,0 +1,232 @@
+/* Create Identity Modal */
+CreateIdentityModal {
+    align: center middle;
+}
+
+CreateIdentityModal > Container {
+    width: 60;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+CreateIdentityModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+CreateIdentityModal .field-label {
+    padding: 1 0 0 0;
+}
+
+CreateIdentityModal .field-hint {
+    color: $text-muted;
+    text-style: italic;
+    padding: 0 0 1 0;
+}
+
+CreateIdentityModal Input {
+    width: 100%;
+}
+
+CreateIdentityModal Select {
+    width: 100%;
+}
+
+CreateIdentityModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}
+
+CreateIdentityModal .button-row Button {
+    margin-left: 1;
+}
+
+/* Edit Identity Modal */
+EditIdentityModal {
+    align: center middle;
+}
+
+EditIdentityModal > Container {
+    width: 65;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+EditIdentityModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+EditIdentityModal .section-title {
+    text-style: bold;
+    padding: 1 0 0 0;
+    border-top: solid $primary;
+    margin-top: 1;
+}
+
+EditIdentityModal .field-label {
+    padding: 1 0 0 0;
+}
+
+EditIdentityModal .field-hint {
+    color: $text-muted;
+    text-style: italic;
+    padding: 0 0 1 0;
+}
+
+EditIdentityModal .warning-text {
+    color: $warning;
+    padding: 1 0;
+}
+
+EditIdentityModal Input {
+    width: 100%;
+}
+
+EditIdentityModal Select {
+    width: 100%;
+}
+
+EditIdentityModal .regenerate-section {
+    padding: 1 0;
+}
+
+EditIdentityModal .regenerate-row {
+    height: auto;
+    align: left middle;
+    padding-top: 1;
+}
+
+EditIdentityModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+    border-top: solid $primary;
+    margin-top: 1;
+}
+
+EditIdentityModal .button-row Button {
+    margin-left: 1;
+}
+
+/* Confirm Delete Modal */
+ConfirmDeleteModal {
+    align: center middle;
+}
+
+ConfirmDeleteModal > Container {
+    width: 55;
+    height: auto;
+    border: thick $error;
+    background: $surface;
+    padding: 1 2;
+}
+
+ConfirmDeleteModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+    color: $error;
+}
+
+ConfirmDeleteModal .identity-name {
+    text-style: bold;
+    padding: 1 0;
+    text-align: center;
+}
+
+ConfirmDeleteModal .warning-text {
+    color: $text-muted;
+    padding: 1 0;
+}
+
+ConfirmDeleteModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}
+
+ConfirmDeleteModal .button-row Button {
+    margin-left: 1;
+}
+
+/* Manage URLs Modal */
+ManageUrlsModal {
+    align: center middle;
+}
+
+ManageUrlsModal > Container {
+    width: 65;
+    height: auto;
+    max-height: 80%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+ManageUrlsModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+ManageUrlsModal .identity-name {
+    color: $text-muted;
+    text-align: center;
+    padding-bottom: 1;
+}
+
+ManageUrlsModal .section-label {
+    padding: 1 0 0 0;
+    text-style: bold;
+}
+
+ManageUrlsModal .url-list {
+    width: 100%;
+    height: auto;
+    max-height: 15;
+    border: solid $primary;
+    margin: 1 0;
+}
+
+ManageUrlsModal .no-urls {
+    width: 100%;
+    padding: 1;
+    color: $text-muted;
+    text-align: center;
+}
+
+ManageUrlsModal .add-section {
+    padding: 1 0;
+}
+
+ManageUrlsModal .add-row {
+    height: auto;
+    align: left middle;
+}
+
+ManageUrlsModal .add-row Input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+ManageUrlsModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}

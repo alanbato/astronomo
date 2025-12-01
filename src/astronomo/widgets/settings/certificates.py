@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from textual.app import ComposeResult
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.widgets import Button, Label, Static
 
@@ -56,16 +56,12 @@ class IdentityListItem(Static):
     IdentityListItem .action-buttons {
         width: auto;
         height: auto;
+        align: right middle;
     }
 
     IdentityListItem .action-buttons Button {
-        min-width: 10;
-        margin-bottom: 1;
-        border: tall $background;
-    }
-
-    IdentityListItem .action-buttons Button:last-child {
-        margin-bottom: 0;
+        min-width: 8;
+        margin-left: 1;
     }
     """
 
@@ -112,8 +108,8 @@ class IdentityListItem(Static):
             url_text = f"URL associations: {url_count}"
             yield Label(url_text, classes="identity-info")
 
-        # Right side: action buttons stacked vertically
-        with Vertical(classes="action-buttons"):
+        # Right side: action buttons in horizontal row
+        with Horizontal(classes="action-buttons"):
             yield Button("Edit", variant="default", id=f"edit-{self.identity.id}")
             yield Button("URLs", variant="default", id=f"urls-{self.identity.id}")
             yield Button("Delete", variant="error", id=f"delete-{self.identity.id}")

@@ -3,6 +3,8 @@
 Provides rename and certificate regeneration functionality.
 """
 
+from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
@@ -20,79 +22,7 @@ class EditIdentityModal(ModalScreen[bool]):
         identity: The identity to edit
     """
 
-    DEFAULT_CSS = """
-    EditIdentityModal {
-        align: center middle;
-    }
-
-    EditIdentityModal > Container {
-        width: 65;
-        height: auto;
-        border: thick $primary;
-        background: $surface;
-        padding: 1 2;
-    }
-
-    EditIdentityModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
-    }
-
-    EditIdentityModal .section-title {
-        text-style: bold;
-        padding: 1 0 0 0;
-        border-top: solid $primary;
-        margin-top: 1;
-    }
-
-    EditIdentityModal .field-label {
-        padding: 1 0 0 0;
-    }
-
-    EditIdentityModal .field-hint {
-        color: $text-muted;
-        text-style: italic;
-        padding: 0 0 1 0;
-    }
-
-    EditIdentityModal .warning-text {
-        color: $warning;
-        padding: 1 0;
-    }
-
-    EditIdentityModal Input {
-        width: 100%;
-    }
-
-    EditIdentityModal Select {
-        width: 100%;
-    }
-
-    EditIdentityModal .regenerate-section {
-        padding: 1 0;
-    }
-
-    EditIdentityModal .regenerate-row {
-        height: auto;
-        align: left middle;
-        padding-top: 1;
-    }
-
-    EditIdentityModal .button-row {
-        width: 100%;
-        height: auto;
-        align: right middle;
-        padding-top: 1;
-        border-top: solid $primary;
-        margin-top: 1;
-    }
-
-    EditIdentityModal .button-row Button {
-        margin-left: 1;
-    }
-    """
+    CSS_PATH = Path(__file__).parent / "certificates.tcss"
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=False, priority=True),
@@ -210,7 +140,7 @@ class EditIdentityModal(ModalScreen[bool]):
         if not hostname:
             hostname = "localhost"
 
-        validity_select = self.query_one("#validity-select", Select[int])
+        validity_select = self.query_one("#validity-select", Select)
         validity_value = validity_select.value
         valid_days = validity_value if isinstance(validity_value, int) else 365
 

@@ -1,5 +1,7 @@
 """Confirm Delete modal for Astronomo."""
 
+from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
@@ -17,49 +19,7 @@ class ConfirmDeleteModal(ModalScreen[bool]):
         identity: The identity to delete
     """
 
-    DEFAULT_CSS = """
-    ConfirmDeleteModal {
-        align: center middle;
-    }
-
-    ConfirmDeleteModal > Container {
-        width: 55;
-        height: auto;
-        border: thick $error;
-        background: $surface;
-        padding: 1 2;
-    }
-
-    ConfirmDeleteModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
-        color: $error;
-    }
-
-    ConfirmDeleteModal .identity-name {
-        text-style: bold;
-        padding: 1 0;
-        text-align: center;
-    }
-
-    ConfirmDeleteModal .warning-text {
-        color: $text-muted;
-        padding: 1 0;
-    }
-
-    ConfirmDeleteModal .button-row {
-        width: 100%;
-        height: auto;
-        align: right middle;
-        padding-top: 1;
-    }
-
-    ConfirmDeleteModal .button-row Button {
-        margin-left: 1;
-    }
-    """
+    CSS_PATH = Path(__file__).parent / "certificates.tcss"
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=False, priority=True),
