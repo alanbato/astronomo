@@ -20,6 +20,7 @@ from astronomo.history import HistoryEntry, HistoryManager
 from astronomo.identities import Identity, IdentityManager
 from astronomo.parser import LineType, parse_gemtext
 from astronomo.response_handler import format_response
+from astronomo.screens import SettingsScreen
 from astronomo.widgets import (
     AddBookmarkModal,
     BookmarksSidebar,
@@ -65,6 +66,7 @@ class Astronomo(App[None]):
         ("ctrl+r", "refresh", "Refresh"),
         ("ctrl+b", "toggle_bookmarks", "Bookmarks"),
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
+        ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 
     def __init__(
@@ -87,17 +89,15 @@ class Astronomo(App[None]):
         self.bookmarks = BookmarkManager()
         self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
-        self._initial_url = initial_url  # Store for use in on_mount
+        self._initial_url = initial_url
 
     def compose(self) -> ComposeResult:
-        """Compose the UI."""
+        """Compose the main browsing UI."""
         yield Header()
         with Horizontal(id="nav-bar"):
-            yield Button("◀", id="back-button", disabled=True)
-            yield Button("▶", id="forward-button", disabled=True)
-            yield Input(
-                id="url-input",
-            )
+            yield Button("\u25c0", id="back-button", disabled=True)
+            yield Button("\u25b6", id="forward-button", disabled=True)
+            yield Input(id="url-input")
         with Horizontal(id="main-content"):
             yield GemtextViewer(id="content")
             yield BookmarksSidebar(self.bookmarks, id="bookmarks-sidebar")
@@ -314,6 +314,13 @@ class Astronomo(App[None]):
 
         # Re-fetch the current URL without adding to history
         self.get_url(self.current_url, add_to_history=False)
+
+    def action_toggle_settings(self) -> None:
+        """Toggle settings modal on/off."""
+        if isinstance(self.screen, SettingsScreen):
+            self.pop_screen()
+        else:
+            self.push_screen(SettingsScreen())
 
     def _handle_input_request(self, url: str, prompt: str, sensitive: bool) -> None:
         """Handle a status 10/11 input request by showing modal.
