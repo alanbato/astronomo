@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Input, Label, Select, Static
+from textual.widgets import Input, Label, Select, Static, Switch
 
 
 class WidgetType(Enum):
@@ -15,6 +15,7 @@ class WidgetType(Enum):
     SELECT = auto()
     INPUT_TEXT = auto()
     INPUT_NUMBER = auto()
+    SWITCH = auto()
 
 
 @dataclass
@@ -69,6 +70,12 @@ class SettingRow(Static):
         max-width: 40;
     }
 
+    SettingRow .setting-switch {
+        width: 0.5fr;
+        max-width: 20;
+    }
+
+
     SettingRow .setting-description {
         color: $text-muted;
         text-style: italic;
@@ -103,7 +110,7 @@ class SettingRow(Static):
                 yield self._create_widget()
             yield Label(self.definition.description, classes="setting-description")
 
-    def _create_widget(self) -> Static | Input | Select[Any]:
+    def _create_widget(self) -> Static | Input | Select[Any] | Switch:
         """Create the appropriate widget for this setting type."""
         widget_id = f"setting-{self.definition.key.replace('.', '-')}"
 
@@ -131,6 +138,12 @@ class SettingRow(Static):
                     id=widget_id,
                     classes="setting-widget",
                 )
+            case WidgetType.SWITCH:
+                return Switch(
+                    value=bool(self.current_value),
+                    id=widget_id,
+                    classes="setting-widget setting-switch",
+                )
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle select widget changes."""
@@ -149,3 +162,9 @@ class SettingRow(Static):
                 except ValueError:
                     return  # Invalid number, don't save
             self.on_change(self.definition.key, value)
+
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        """Handle switch widget changes."""
+        widget_id = f"setting-{self.definition.key.replace('.', '-')}"
+        if event.switch.id == widget_id:
+            self.on_change(self.definition.key, event.value)

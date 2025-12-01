@@ -60,6 +60,19 @@ class GemtextHeading(GemtextLine):
 
 
 @dataclass
+class GemtextPreformatted(GemtextLine):
+    """Represents a parsed preformatted text block with optional language hint."""
+
+    alt_text: str | None
+
+    def __init__(self, raw: str, content: str, alt_text: str | None = None):
+        self.line_type = LineType.PREFORMATTED
+        self.content = content
+        self.raw = raw
+        self.alt_text = alt_text
+
+
+@dataclass
 class PreformattedBlock:
     """Represents a preformatted text block."""
 
@@ -151,13 +164,14 @@ class GemtextParser:
     def _close_preformatted_block(self):
         """Close the current preformatted block and add it to parsed lines."""
         if self._current_preformatted:
-            # Join all lines with newlines and create a single GemtextLine
+            # Join all lines with newlines and create a GemtextPreformatted
             content = "\n".join(self._current_preformatted.lines)
+            alt_text = self._current_preformatted.alt_text
             self._parsed_lines.append(
-                GemtextLine(
-                    line_type=LineType.PREFORMATTED,
+                GemtextPreformatted(
+                    raw=f"```{alt_text or ''}\n{content}\n```",
                     content=content,
-                    raw=f"```\n{content}\n```",
+                    alt_text=alt_text,
                 )
             )
             self._current_preformatted = None

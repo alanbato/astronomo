@@ -22,6 +22,13 @@ APPEARANCE_SETTINGS = [
         options=[(theme, theme) for theme in sorted(VALID_THEMES)],
         default="textual-dark",
     ),
+    SettingDefinition(
+        key="appearance.syntax_highlighting",
+        label="Syntax Highlighting",
+        widget_type=WidgetType.SWITCH,
+        description="Enable syntax highlighting in preformatted code blocks",
+        default=True,
+    ),
 ]
 
 
@@ -59,9 +66,13 @@ class AppearanceSettings(Static):
     def _handle_change(self, key: str, value: Any) -> None:
         """Handle setting change - update config and save."""
         parts = key.split(".")
-        if parts[0] == "appearance" and parts[1] == "theme":
-            self.config_manager.config.appearance.theme = value
-            self.config_manager.save()
-            # Apply theme immediately
-            app: Astronomo = self.app  # type: ignore[assignment]
-            app.theme = value
+        if parts[0] == "appearance":
+            if parts[1] == "theme":
+                self.config_manager.config.appearance.theme = value
+                self.config_manager.save()
+                # Apply theme immediately
+                app: Astronomo = self.app  # type: ignore[assignment]
+                app.theme = value
+            elif parts[1] == "syntax_highlighting":
+                self.config_manager.config.appearance.syntax_highlighting = value
+                self.config_manager.save()

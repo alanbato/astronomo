@@ -27,7 +27,7 @@ class TestAppearanceConfig:
         """Test converting to dictionary."""
         config = AppearanceConfig(theme="nord")
         data = config.to_dict()
-        assert data == {"theme": "nord"}
+        assert data == {"theme": "nord", "syntax_highlighting": True}
 
     def test_from_dict_valid_theme(self) -> None:
         """Test creating from dictionary with valid theme."""

@@ -40,6 +40,10 @@ DEFAULT_CONFIG_TEMPLATE = """\
 #                   catppuccin-mocha, solarized-light
 theme = "textual-dark"
 
+# Enable syntax highlighting in preformatted code blocks
+# Uses language hints from alt text (e.g., ```python) or auto-detection
+syntax_highlighting = true
+
 [browsing]
 # Default home page when launching without a URL argument
 # Uncomment and set to your preferred start page:
@@ -59,13 +63,18 @@ class AppearanceConfig:
 
     Attributes:
         theme: Textual theme name (e.g., "textual-dark", "nord", "gruvbox")
+        syntax_highlighting: Enable syntax highlighting in preformatted blocks
     """
 
     theme: str = "textual-dark"
+    syntax_highlighting: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
-        return {"theme": self.theme}
+        return {
+            "theme": self.theme,
+            "syntax_highlighting": self.syntax_highlighting,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Self:
@@ -75,7 +84,14 @@ class AppearanceConfig:
         # Validate theme - fall back to default if invalid
         if not isinstance(theme, str) or theme not in VALID_THEMES:
             theme = defaults.theme
-        return cls(theme=theme)
+
+        syntax_highlighting = data.get(
+            "syntax_highlighting", defaults.syntax_highlighting
+        )
+        if not isinstance(syntax_highlighting, bool):
+            syntax_highlighting = defaults.syntax_highlighting
+
+        return cls(theme=theme, syntax_highlighting=syntax_highlighting)
 
 
 @dataclass
@@ -244,3 +260,8 @@ class ConfigManager:
     def max_redirects(self) -> int:
         """Get the configured max redirects."""
         return self.config.browsing.max_redirects
+
+    @property
+    def syntax_highlighting(self) -> bool:
+        """Get whether syntax highlighting is enabled."""
+        return self.config.appearance.syntax_highlighting

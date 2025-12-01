@@ -1,12 +1,25 @@
 """GemtextViewer widget for displaying interactive Gemtext content."""
 
+from typing import TYPE_CHECKING
+
 from rich.text import Text
 from textual.containers import VerticalScroll
+from textual.content import Content
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
 
-from astronomo.parser import GemtextHeading, GemtextLine, GemtextLink, LineType
+from astronomo.parser import (
+    GemtextHeading,
+    GemtextLine,
+    GemtextLink,
+    GemtextPreformatted,
+    LineType,
+)
+from astronomo.syntax import highlight_code, normalize_language
+
+if TYPE_CHECKING:
+    from astronomo.astronomo_app import Astronomo
 
 
 # --- Line Widget Classes ---
@@ -106,7 +119,7 @@ class GemtextBlockquoteWidget(GemtextLineWidget):
 
 
 class GemtextPreformattedWidget(GemtextLineWidget):
-    """Widget for preformatted text blocks."""
+    """Widget for preformatted text blocks with optional syntax highlighting."""
 
     DEFAULT_CSS = """
     GemtextPreformattedWidget {
@@ -115,8 +128,30 @@ class GemtextPreformattedWidget(GemtextLineWidget):
     }
     """
 
-    def render(self) -> Text:
-        return Text.from_ansi(self.line.content)
+    def render(self) -> Text | Content:
+        content = self.line.content
+
+        # Always preserve ANSI escape codes if present (server-provided coloring)
+        if "\x1b[" in content or "\033[" in content:
+            return Text.from_ansi(content)
+
+        # Check if syntax highlighting is enabled in config
+        # Access config through the app if available
+        try:
+            app: Astronomo = self.app  # type: ignore[assignment]
+            if not app.config_manager.syntax_highlighting:
+                return Content(content)
+        except AttributeError:
+            # App or config not available (e.g., in tests), proceed with highlighting
+            pass
+
+        # Get language from alt_text if available
+        language = None
+        if isinstance(self.line, GemtextPreformatted):
+            language = normalize_language(self.line.alt_text)
+
+        # Apply syntax highlighting with auto-detection fallback
+        return highlight_code(content, language)
 
 
 class GemtextLinkWidget(GemtextLineWidget):

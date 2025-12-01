@@ -5,6 +5,7 @@ from astronomo.parser import (
     GemtextLine,
     GemtextLink,
     GemtextParser,
+    GemtextPreformatted,
     LineType,
     parse_gemtext,
 )
@@ -228,6 +229,41 @@ class TestGemtextParser:
         assert len(result) == 1
         assert result[0].line_type == LineType.PREFORMATTED
         assert result[0].content == "print('Hello')"
+        # Verify alt_text is preserved
+        assert isinstance(result[0], GemtextPreformatted)
+        assert result[0].alt_text == "python"
+
+    def test_parse_preformatted_block_alt_text_preserved(self):
+        """Test that alt_text is preserved in GemtextPreformatted."""
+        content = "```javascript\nconsole.log('Hello');\n```"
+        parser = GemtextParser()
+        result = parser.parse(content)
+
+        assert len(result) == 1
+        assert isinstance(result[0], GemtextPreformatted)
+        assert result[0].alt_text == "javascript"
+        assert result[0].content == "console.log('Hello');"
+
+    def test_parse_preformatted_block_without_alt_text(self):
+        """Test preformatted block without alt text has None."""
+        content = "```\nsome code\n```"
+        parser = GemtextParser()
+        result = parser.parse(content)
+
+        assert len(result) == 1
+        assert isinstance(result[0], GemtextPreformatted)
+        assert result[0].alt_text is None
+        assert result[0].content == "some code"
+
+    def test_parse_preformatted_block_alt_text_with_spaces(self):
+        """Test alt text with extra content after language."""
+        content = "```rust example code\nfn main() {}\n```"
+        parser = GemtextParser()
+        result = parser.parse(content)
+
+        assert len(result) == 1
+        assert isinstance(result[0], GemtextPreformatted)
+        assert result[0].alt_text == "rust example code"
 
     def test_parse_preformatted_preserves_markup(self):
         """Test that preformatted blocks preserve markup characters."""
@@ -368,3 +404,27 @@ class TestGemtextLineObjects:
         assert line.line_type == LineType.TEXT
         assert line.content == "Some text"
         assert line.raw == "Some text"
+
+    def test_gemtext_preformatted_with_alt_text(self):
+        """Test GemtextPreformatted object with alt_text."""
+        preformatted = GemtextPreformatted(
+            raw="```python\nprint('hello')\n```",
+            content="print('hello')",
+            alt_text="python",
+        )
+
+        assert preformatted.line_type == LineType.PREFORMATTED
+        assert preformatted.content == "print('hello')"
+        assert preformatted.alt_text == "python"
+        assert preformatted.raw == "```python\nprint('hello')\n```"
+
+    def test_gemtext_preformatted_without_alt_text(self):
+        """Test GemtextPreformatted object without alt_text."""
+        preformatted = GemtextPreformatted(
+            raw="```\ncode\n```",
+            content="code",
+        )
+
+        assert preformatted.line_type == LineType.PREFORMATTED
+        assert preformatted.content == "code"
+        assert preformatted.alt_text is None
