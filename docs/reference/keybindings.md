@@ -1,0 +1,78 @@
+# Keybindings
+
+Complete reference of all keyboard shortcuts in Astronomo.
+
+## Global Shortcuts
+
+These shortcuts work anywhere in the application:
+
+| Key | Action |
+|-----|--------|
+| ++ctrl+q++ | Quit Astronomo |
+| ++ctrl+r++ | Refresh current page |
+| ++ctrl+b++ | Toggle bookmarks sidebar |
+| ++ctrl+d++ | Add current page to bookmarks |
+| ++ctrl+comma++ | Open settings |
+
+## Navigation
+
+### History
+
+| Key | Action |
+|-----|--------|
+| ++backspace++ | Go back in history |
+| ++shift+backspace++ | Go forward in history |
+
+### Link Navigation
+
+| Key | Action |
+|-----|--------|
+| ++arrow-left++ | Select previous link |
+| ++arrow-right++ | Select next link |
+| ++enter++ | Open selected link |
+
+### Page Scrolling
+
+| Key | Action |
+|-----|--------|
+| ++arrow-up++ | Scroll up |
+| ++arrow-down++ | Scroll down |
+| ++page-up++ | Scroll up one page |
+| ++page-down++ | Scroll down one page |
+| ++home++ | Scroll to top |
+| ++end++ | Scroll to bottom |
+
+## Address Bar
+
+| Key | Action |
+|-----|--------|
+| ++enter++ | Navigate to URL |
+| ++escape++ | Cancel and return to content |
+
+## Bookmarks Sidebar
+
+When the bookmarks sidebar is open:
+
+| Key | Action |
+|-----|--------|
+| ++ctrl+b++ | Close sidebar |
+| ++enter++ | Open selected bookmark |
+| ++arrow-up++ / ++arrow-down++ | Navigate list |
+
+## Modal Dialogs
+
+| Key | Action |
+|-----|--------|
+| ++escape++ | Cancel/close dialog |
+| ++enter++ | Confirm/submit |
+| ++tab++ | Move to next field |
+| ++shift+tab++ | Move to previous field |
+
+## Mouse Actions
+
+| Action | Effect |
+|--------|--------|
+| Click link | Navigate to link |
+| Click bookmark | Navigate to bookmark |
+| Click back button (◀) | Go back in history |
+| Click forward button (▶) | Go forward in history |

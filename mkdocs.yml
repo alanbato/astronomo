@@ -1,0 +1,132 @@
+site_name: Astronomo
+site_description: A Gemini browser for the terminal
+site_url: https://astronomo.readthedocs.io
+repo_url: https://github.com/alanbato/astronomo
+repo_name: alanbato/astronomo
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.action.view
+    - content.action.edit
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+  palette:
+    - scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_style: google
+            merge_init_into_class: true
+            show_signature_annotations: true
+            separate_signature: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Quick Start: quickstart.md
+  - Tutorials:
+      - tutorials/index.md
+      - Your First Session: tutorials/first-session.md
+      - Customizing Astronomo: tutorials/customizing-astronomo.md
+  - How-to Guides:
+      - how-to/index.md
+      - Navigation: how-to/navigation.md
+      - Bookmarks: how-to/bookmarks.md
+      - Configuration: how-to/configure.md
+      - Certificates: how-to/certificates.md
+  - Reference:
+      - reference/index.md
+      - Keybindings: reference/keybindings.md
+      - Configuration: reference/configuration.md
+      - API:
+          - reference/api/index.md
+          - Parser: reference/api/parser.md
+          - History: reference/api/history.md
+          - Bookmarks: reference/api/bookmarks.md
+          - Config: reference/api/config.md
+          - Identities: reference/api/identities.md
+  - Explanation:
+      - explanation/index.md
+      - Gemini Protocol: explanation/gemini-protocol.md
+      - Architecture: explanation/architecture.md
+  - Changelog: changelog.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alanbato/astronomo
+  version:
+    provider: mike
