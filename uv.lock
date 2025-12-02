@@ -168,7 +168,7 @@ wheels = [
 
 [[package]]
 name = "astronomo"
-version = "0.1.0"
+version = "0.3.3"
 source = { editable = "." }
 dependencies = [
     { name = "nauyaca" },

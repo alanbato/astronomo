@@ -31,11 +31,25 @@ When a site requests a certificate, Astronomo prompts you to select or create on
 
 ## Selecting a Certificate
 
-When a site requests a certificate:
+### Proactive Selection (Session-Based)
+
+When navigating to a site where you have one or more identities with matching URL prefixes:
+
+1. A dialog automatically appears before the request is made
+2. Shows all matching identities plus "Continue without identity" option
+3. Select an identity or browse anonymously
+4. Your choice is remembered for the **current session** (until you quit Astronomo)
+
+This allows you to choose which identity to use when you have multiple options, without permanently associating an identity with the site.
+
+### Server-Requested Selection (Status 60)
+
+When a site explicitly requests a certificate:
 
 1. A dialog shows your available identities
 2. Select the one to use for this site
-3. Astronomo remembers your choice for this host
+3. Optionally check "Remember for this host" to permanently associate the identity
+4. Astronomo also remembers your choice for the current session
 
 ## Managing Identities
 
@@ -65,32 +79,48 @@ Each identity includes:
 
 ## Host Associations
 
-### Automatic Association
+### Session Associations (Temporary)
 
-When you select an identity for a site, Astronomo remembers the association:
+When you select an identity via the proactive selection dialog:
 
-- Host: `example.com`
-- Identity: Your selected certificate
+- The choice is stored in memory for the current session
+- Applies to the host (e.g., `gemini://example.com/`)
+- Lost when you quit Astronomo
+- Use this when you want to temporarily use a specific identity
 
-Future requests to that host automatically use the same identity.
+### Persistent Associations (Permanent)
+
+When you check "Remember for this host" in the status 60 dialog:
+
+- The URL prefix is added to the identity's stored associations
+- Saved to disk in `~/.config/astronomo/identities.toml`
+- Persists across sessions
+- Triggers the proactive selection dialog on future visits (if multiple identities match)
 
 ### Changing Association
 
 To use a different identity for a site:
 
-1. Clear the current association in Settings
-2. Visit the site again
-3. Select a different identity when prompted
+**For session associations:**
+- Simply quit and restart Astronomo, then select a different identity
+
+**For persistent associations:**
+1. Open Settings (++ctrl+comma++)
+2. Navigate to Certificates
+3. Select the identity and choose "Manage URLs"
+4. Remove the URL association
+5. Visit the site again and select a different identity
 
 ## Certificate Storage
 
-Certificates are stored in `~/.config/astronomo/identities/`:
+Certificates are stored in `~/.config/astronomo/`:
 
 ```
-~/.config/astronomo/identities/
-├── identities.toml      # Metadata and host mappings
-├── abc123.crt           # Certificate file
-└── abc123.key           # Private key file
+~/.config/astronomo/
+├── identities.toml           # Metadata and host mappings
+└── certificates/
+    ├── {uuid}.pem            # Certificate file
+    └── {uuid}.key            # Private key file
 ```
 
 !!! warning "Security Note"
@@ -101,14 +131,16 @@ Certificates are stored in `~/.config/astronomo/identities/`:
 ### Backup
 
 ```bash
-# Backup the entire identities directory
-cp -r ~/.config/astronomo/identities ~/identities-backup
+# Backup identity metadata and certificates
+cp ~/.config/astronomo/identities.toml ~/astronomo-backup/
+cp -r ~/.config/astronomo/certificates ~/astronomo-backup/
 ```
 
 ### Restore
 
 ```bash
-cp -r ~/identities-backup ~/.config/astronomo/identities
+cp ~/astronomo-backup/identities.toml ~/.config/astronomo/
+cp -r ~/astronomo-backup/certificates ~/.config/astronomo/
 ```
 
 ## Troubleshooting
@@ -132,8 +164,8 @@ If you've lost access to an identity:
 Ensure proper file permissions:
 
 ```bash
-chmod 700 ~/.config/astronomo/identities
-chmod 600 ~/.config/astronomo/identities/*.key
+chmod 700 ~/.config/astronomo/certificates
+chmod 600 ~/.config/astronomo/certificates/*.key
 ```
 
 ## Best Practices

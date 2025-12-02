@@ -475,3 +475,95 @@ class TestIdentityManager:
         """Test regenerating certificate for non-existent identity."""
         result = manager.regenerate_certificate("nonexistent-id", "example.com")
         assert result is False
+
+    def test_get_all_identities_for_url_single_match(
+        self, manager: IdentityManager
+    ) -> None:
+        """Test getting all identities for URL with single match."""
+        identity = manager.create_identity(
+            name="Test Identity",
+            hostname="example.com",
+        )
+        manager.add_url_prefix(identity.id, "gemini://example.com/")
+
+        matches = manager.get_all_identities_for_url("gemini://example.com/page")
+
+        assert len(matches) == 1
+        assert matches[0].id == identity.id
+
+    def test_get_all_identities_for_url_multiple_matches(
+        self, manager: IdentityManager
+    ) -> None:
+        """Test getting all identities for URL with multiple matches."""
+        identity1 = manager.create_identity(
+            name="Site-wide",
+            hostname="example.com",
+        )
+        identity2 = manager.create_identity(
+            name="App-specific",
+            hostname="example.com",
+        )
+
+        manager.add_url_prefix(identity1.id, "gemini://example.com/")
+        manager.add_url_prefix(identity2.id, "gemini://example.com/app/")
+
+        # URL under /app/ should match both identities
+        matches = manager.get_all_identities_for_url("gemini://example.com/app/page")
+
+        assert len(matches) == 2
+        # Longest prefix first
+        assert matches[0].id == identity2.id
+        assert matches[1].id == identity1.id
+
+    def test_get_all_identities_for_url_no_matches(
+        self, manager: IdentityManager
+    ) -> None:
+        """Test getting all identities for URL with no matches."""
+        identity = manager.create_identity(
+            name="Test Identity",
+            hostname="example.com",
+        )
+        manager.add_url_prefix(identity.id, "gemini://example.com/")
+
+        matches = manager.get_all_identities_for_url("gemini://other.com/page")
+
+        assert matches == []
+
+    def test_get_all_identities_for_url_sorted_by_prefix_length(
+        self, manager: IdentityManager
+    ) -> None:
+        """Test that results are sorted by prefix length (longest first)."""
+        identity1 = manager.create_identity(name="Short", hostname="example.com")
+        identity2 = manager.create_identity(name="Medium", hostname="example.com")
+        identity3 = manager.create_identity(name="Long", hostname="example.com")
+
+        # Add prefixes in random order
+        manager.add_url_prefix(identity2.id, "gemini://example.com/path/")
+        manager.add_url_prefix(identity1.id, "gemini://example.com/")
+        manager.add_url_prefix(identity3.id, "gemini://example.com/path/to/deep/")
+
+        matches = manager.get_all_identities_for_url(
+            "gemini://example.com/path/to/deep/page"
+        )
+
+        assert len(matches) == 3
+        assert matches[0].name == "Long"
+        assert matches[1].name == "Medium"
+        assert matches[2].name == "Short"
+
+    def test_get_all_identities_for_url_counts_each_identity_once(
+        self, manager: IdentityManager
+    ) -> None:
+        """Test that each identity is only counted once even with multiple matching prefixes."""
+        identity = manager.create_identity(
+            name="Multi-prefix",
+            hostname="example.com",
+        )
+        manager.add_url_prefix(identity.id, "gemini://example.com/")
+        manager.add_url_prefix(identity.id, "gemini://example.com/app/")
+
+        matches = manager.get_all_identities_for_url("gemini://example.com/app/page")
+
+        # Identity should appear only once
+        assert len(matches) == 1
+        assert matches[0].id == identity.id

@@ -31,6 +31,8 @@ from astronomo.widgets import (
     IdentityResult,
     IdentitySelectModal,
     InputModal,
+    SessionIdentityModal,
+    SessionIdentityResult,
 )
 
 # Register gemini as a valid URL scheme for proper urljoin behavior
@@ -38,6 +40,9 @@ if "gemini" not in uses_relative:
     uses_relative.append("gemini")
 if "gemini" not in uses_netloc:
     uses_netloc.append("gemini")
+
+# Sentinel value for session identity choice "not yet prompted"
+_NOT_YET_PROMPTED = object()
 
 
 def build_query_url(base_url: str, query: str) -> str:
@@ -90,6 +95,9 @@ class Astronomo(App[None]):
         self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url
+        # Session-scoped identity choices (not persisted to disk)
+        # Key: URL prefix, Value: Identity or None (anonymous)
+        self._session_identity_choices: dict[str, Identity | None] = {}
 
     def compose(self) -> ComposeResult:
         """Compose the main browsing UI."""
@@ -155,6 +163,7 @@ class Astronomo(App[None]):
         url: str,
         add_to_history: bool = True,
         identity: Identity | None = None,
+        skip_session_prompt: bool = False,
     ) -> None:
         """Fetch and display a Gemini resource.
 
@@ -162,6 +171,7 @@ class Astronomo(App[None]):
             url: The URL to fetch
             add_to_history: Whether to add this fetch to history (default True)
             identity: Optional identity to use (overrides auto-selection)
+            skip_session_prompt: If True, skip session identity modal (internal use)
         """
         import asyncio
 
@@ -171,8 +181,31 @@ class Astronomo(App[None]):
         if not self._navigating_history and add_to_history:
             self._update_current_history_state()
 
+        # Session identity selection: prompt user before making request
+        if identity is None and not skip_session_prompt:
+            choice = self._get_session_identity_choice(url)
+
+            if choice is _NOT_YET_PROMPTED:
+                # Check if any identities match this URL
+                matching = self.identities.get_all_identities_for_url(url)
+                if matching:
+                    # Show modal and return (modal callback will re-call get_url)
+                    self.call_later(
+                        self._handle_session_identity_prompt,
+                        url,
+                        matching,
+                        add_to_history,
+                    )
+                    return
+            elif isinstance(choice, Identity):
+                # User previously chose an identity for this session
+                identity = choice
+            # else: choice is None means "anonymous" was chosen, proceed without identity
+
         # Determine which identity to use (if any)
-        selected_identity = identity or self.identities.get_identity_for_url(url)
+        # Note: If identity is already set (from session or parameter), use it
+        # Otherwise fall back to auto-selection (shouldn't happen with session prompts)
+        selected_identity = identity
 
         # Build client arguments
         client_kwargs: dict = {
@@ -355,14 +388,18 @@ class Astronomo(App[None]):
 
         def handle_result(result: IdentityResult | None) -> None:
             if result is not None:
-                # Remember the URL prefix if requested
+                # Remember the URL prefix if requested (persistent)
                 if result.remember:
                     parsed = urlparse(url)
                     url_prefix = f"{parsed.scheme}://{parsed.netloc}/"
                     self.identities.add_url_prefix(result.identity.id, url_prefix)
 
+                # Also update session choice so subsequent requests use this identity
+                session_prefix = self._get_session_prefix_for_url(url)
+                self._session_identity_choices[session_prefix] = result.identity
+
                 # Retry with the selected identity
-                self.get_url(url, identity=result.identity)
+                self.get_url(url, identity=result.identity, skip_session_prompt=True)
 
         self.push_screen(
             IdentitySelectModal(
@@ -389,8 +426,11 @@ class Astronomo(App[None]):
                 return
 
             if result.action == "switch" and result.identity is not None:
+                # Update session choice
+                session_prefix = self._get_session_prefix_for_url(url)
+                self._session_identity_choices[session_prefix] = result.identity
                 # Retry with the new identity
-                self.get_url(url, identity=result.identity)
+                self.get_url(url, identity=result.identity, skip_session_prompt=True)
 
         self.push_screen(
             IdentityErrorModal(
@@ -419,11 +459,17 @@ class Astronomo(App[None]):
                 return
 
             if result.action == "regenerate" and result.identity is not None:
+                # Update session choice
+                session_prefix = self._get_session_prefix_for_url(url)
+                self._session_identity_choices[session_prefix] = result.identity
                 # Retry with the regenerated identity
-                self.get_url(url, identity=result.identity)
+                self.get_url(url, identity=result.identity, skip_session_prompt=True)
             elif result.action == "switch" and result.identity is not None:
+                # Update session choice
+                session_prefix = self._get_session_prefix_for_url(url)
+                self._session_identity_choices[session_prefix] = result.identity
                 # Retry with the new identity
-                self.get_url(url, identity=result.identity)
+                self.get_url(url, identity=result.identity, skip_session_prompt=True)
 
         self.push_screen(
             IdentityErrorModal(
@@ -432,6 +478,86 @@ class Astronomo(App[None]):
                 message=message,
                 error_type="not_valid",
                 current_identity=current_identity,
+            ),
+            handle_result,
+        )
+
+    def _get_session_prefix_for_url(self, url: str) -> str:
+        """Get host-level prefix for session identity storage.
+
+        Args:
+            url: The URL to get the prefix for
+
+        Returns:
+            URL prefix in the form "scheme://host/"
+        """
+        parsed = urlparse(url)
+        return f"{parsed.scheme}://{parsed.netloc}/"
+
+    def _get_session_identity_choice(self, url: str) -> Identity | None | object:
+        """Get the session's identity choice for a URL.
+
+        Args:
+            url: The URL to check
+
+        Returns:
+            - Identity: User chose this identity for this prefix
+            - None: User chose "anonymous" (no identity)
+            - _NOT_YET_PROMPTED: No choice made yet for this prefix
+        """
+        prefix = self._get_session_prefix_for_url(url)
+
+        if prefix in self._session_identity_choices:
+            choice = self._session_identity_choices[prefix]
+            if choice is None:
+                return None  # Anonymous choice
+
+            # Validate the identity is still usable
+            if self.identities.is_identity_valid(choice.id):
+                return choice
+            else:
+                # Identity expired/invalid - remove from session and re-prompt
+                del self._session_identity_choices[prefix]
+                return _NOT_YET_PROMPTED
+
+        return _NOT_YET_PROMPTED
+
+    def _handle_session_identity_prompt(
+        self,
+        url: str,
+        matching_identities: list[Identity],
+        add_to_history: bool,
+    ) -> None:
+        """Show session identity selection modal and handle result.
+
+        Args:
+            url: The URL being navigated to
+            matching_identities: List of identities that match the URL
+            add_to_history: Whether to add the navigation to history
+        """
+
+        def handle_result(result: SessionIdentityResult | None) -> None:
+            if result is None or result.cancelled:
+                # User cancelled - stay on current page
+                return
+
+            # Store the session choice
+            prefix = self._get_session_prefix_for_url(url)
+            self._session_identity_choices[prefix] = result.identity
+
+            # Re-fetch with the chosen identity (or None for anonymous)
+            self.get_url(
+                url,
+                add_to_history=add_to_history,
+                identity=result.identity,
+                skip_session_prompt=True,
+            )
+
+        self.push_screen(
+            SessionIdentityModal(
+                manager=self.identities,
+                url=url,
+                matching_identities=matching_identities,
             ),
             handle_result,
         )

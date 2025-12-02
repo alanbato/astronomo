@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Documentation site with MkDocs
+- Session-based identity selection: When navigating to a site with matching identities, a modal prompts users to select which identity to use or browse anonymously. The choice persists for the session (until app quits)
+- `get_all_identities_for_url()` method in `IdentityManager` to retrieve all matching identities for a URL
 
 ## [0.1.0] - 2025-01-XX
 

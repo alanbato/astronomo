@@ -348,6 +348,30 @@ class IdentityManager:
 
         return best_match
 
+    def get_all_identities_for_url(self, url: str) -> list[Identity]:
+        """Find all identities that have URL prefixes matching the given URL.
+
+        Unlike get_identity_for_url() which returns only the longest-prefix match,
+        this returns ALL identities that could be used for the URL.
+
+        Args:
+            url: The URL to match against
+
+        Returns:
+            List of matching Identity objects, sorted by longest prefix first
+        """
+        matches: list[tuple[int, Identity]] = []
+
+        for identity in self.identities:
+            for prefix in identity.url_prefixes:
+                if url.startswith(prefix):
+                    matches.append((len(prefix), identity))
+                    break  # Only count each identity once (use longest matching prefix)
+
+        # Sort by prefix length descending (longest match first)
+        matches.sort(key=lambda x: x[0], reverse=True)
+        return [identity for _, identity in matches]
+
     # Certificate validation
 
     def is_identity_valid(self, identity_id: str) -> bool:
