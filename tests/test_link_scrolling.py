@@ -5,6 +5,10 @@ import pytest
 from astronomo.astronomo_app import Astronomo
 from astronomo.widgets import GemtextViewer
 
+# Mark all tests in this module as slow (they spin up the full app)
+# Note: These tests use mocked network responses via conftest.py fixtures
+pytestmark = pytest.mark.slow
+
 
 def is_link_visible(viewer: GemtextViewer, link_index: int) -> bool:
     """Check if a link at the given index is visible in the viewport.
@@ -43,18 +47,18 @@ class TestLinkScrolling:
     """Test suite for link navigation scrolling behavior."""
 
     @pytest.mark.asyncio
-    async def test_link_scrolling_with_real_document(self):
-        """Test link navigation with a real Gemini document.
+    async def test_link_scrolling_with_real_document(self, mock_gemini_client):
+        """Test link navigation with mocked Gemini content.
 
-        Navigates to gemini://geminiprotocol.net/docs/faq.gmi and tests
-        that links remain visible when navigating through them.
+        Uses mocked content to test that links remain visible when
+        navigating through them.
         """
         app = Astronomo(initial_url="gemini://geminiprotocol.net/docs/faq.gmi")
 
         # Use constrained viewport to force scrolling
         async with app.run_test(size=(80, 24)) as pilot:
-            # Wait for the page to load
-            await pilot.pause(delay=1.0)
+            # Brief pause to let the UI settle (no network delay needed)
+            await pilot.pause()
 
             viewer = app.query_one("#content", GemtextViewer)
 
@@ -79,7 +83,7 @@ class TestLinkScrolling:
                 )
 
     @pytest.mark.asyncio
-    async def test_link_8_to_9_visible(self):
+    async def test_link_8_to_9_visible(self, mock_gemini_client):
         """Specifically test that after navigating from 8th to 9th link, link is visible.
 
         This tests the specific case mentioned in requirements: after going from
@@ -88,8 +92,8 @@ class TestLinkScrolling:
         app = Astronomo(initial_url="gemini://geminiprotocol.net/docs/faq.gmi")
 
         async with app.run_test(size=(80, 24)) as pilot:
-            # Wait for page to load
-            await pilot.pause(delay=1.0)
+            # Brief pause to let the UI settle
+            await pilot.pause()
 
             viewer = app.query_one("#content", GemtextViewer)
 
@@ -119,12 +123,12 @@ class TestLinkScrolling:
             )
 
     @pytest.mark.asyncio
-    async def test_wrap_around_last_to_first(self):
+    async def test_wrap_around_last_to_first(self, mock_gemini_client):
         """Test that navigating past the last link wraps to the first."""
         app = Astronomo(initial_url="gemini://geminiprotocol.net/docs/faq.gmi")
 
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.pause(delay=1.0)
+            await pilot.pause()
 
             viewer = app.query_one("#content", GemtextViewer)
 
@@ -152,12 +156,12 @@ class TestLinkScrolling:
             )
 
     @pytest.mark.asyncio
-    async def test_wrap_around_first_to_last(self):
+    async def test_wrap_around_first_to_last(self, mock_gemini_client):
         """Test that navigating before the first link wraps to the last."""
         app = Astronomo(initial_url="gemini://geminiprotocol.net/docs/faq.gmi")
 
         async with app.run_test(size=(80, 24)) as pilot:
-            await pilot.pause(delay=1.0)
+            await pilot.pause()
 
             viewer = app.query_one("#content", GemtextViewer)
 
@@ -183,13 +187,13 @@ class TestLinkScrolling:
             )
 
     @pytest.mark.asyncio
-    async def test_no_scroll_when_link_already_visible(self):
+    async def test_no_scroll_when_link_already_visible(self, mock_gemini_client):
         """Test that scrolling doesn't occur when navigating to an already-visible link."""
         app = Astronomo(initial_url="gemini://geminiprotocol.net/docs/faq.gmi")
 
         # Use larger viewport so multiple links are visible
         async with app.run_test(size=(80, 30)) as pilot:
-            await pilot.pause(delay=1.0)
+            await pilot.pause()
 
             viewer = app.query_one("#content", GemtextViewer)
 
