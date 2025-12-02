@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-12-02
+
 ### Added
 - Documentation site with MkDocs
 - Session-based identity selection: When navigating to a site with matching identities, a modal prompts users to select which identity to use or browse anonymously. The choice persists for the session (until app quits)
 - `get_all_identities_for_url()` method in `IdentityManager` to retrieve all matching identities for a URL
 
-## [0.1.0] - 2025-01-XX
+### Fixed
+- Home page from config is now properly loaded on startup
+
+## [0.1.0] - 2025-01-05
 
 ### Added
 - Initial release
@@ -26,5 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Syntax highlighting for preformatted code blocks
 - Theme support via Textual themes
 
-[Unreleased]: https://github.com/alanbato/astronomo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/alanbato/astronomo/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/alanbato/astronomo/compare/v0.1.0...v0.4.0
 [0.1.0]: https://github.com/alanbato/astronomo/releases/tag/v0.1.0
