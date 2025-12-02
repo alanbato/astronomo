@@ -1,7 +1,8 @@
 [project]
 name = "astronomo"
 version = "0.1.0"
-description = "Add your description here"
+description = "A modern Gemini browser for the terminal"
+license = "GPL-3.0-or-later"
 readme = "README.md"
 authors = [
     { name = "Alan Velasco", email = "alan@alanbato.com" }
