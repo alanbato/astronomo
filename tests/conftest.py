@@ -1,5 +1,8 @@
 """Shared pytest fixtures for Astronomo tests."""
 
+import tempfile
+from pathlib import Path
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -102,3 +105,27 @@ def mock_gemini_client(monkeypatch, mock_gemini_response):
     mock_class = MagicMock(return_value=mock_client)
     monkeypatch.setattr("astronomo.astronomo_app.GeminiClient", mock_class)
     return mock_client
+
+
+@pytest.fixture
+def temp_config_path():
+    """Create a temporary config file with no home_page set.
+
+    This isolates tests from the user's real config file, ensuring
+    that tests relying on no initial URL aren't affected by the
+    user's configured home_page.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = Path(tmpdir) / "config.toml"
+        # Create minimal config without home_page
+        config_path.write_text(
+            """\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+"""
+        )
+        yield config_path

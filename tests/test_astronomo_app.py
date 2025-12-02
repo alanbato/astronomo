@@ -39,9 +39,11 @@ class TestWelcomeMessage:
     """Tests for the welcome message when no initial URL is provided."""
 
     @pytest.mark.asyncio
-    async def test_shows_welcome_without_url(self, mock_gemini_client):
+    async def test_shows_welcome_without_url(
+        self, mock_gemini_client, temp_config_path
+    ):
         """Test that welcome message is shown when no URL is provided."""
-        app = Astronomo()
+        app = Astronomo(config_path=temp_config_path)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
@@ -149,9 +151,11 @@ class TestRefreshAction:
     """Tests for page refresh action."""
 
     @pytest.mark.asyncio
-    async def test_refresh_does_nothing_without_url(self, mock_gemini_client):
+    async def test_refresh_does_nothing_without_url(
+        self, mock_gemini_client, temp_config_path
+    ):
         """Test that refresh does nothing when no URL is loaded."""
-        app = Astronomo()
+        app = Astronomo(config_path=temp_config_path)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()

@@ -115,9 +115,11 @@ class Astronomo(App[None]):
         """Initialize the viewer with a welcome message or load initial URL."""
         viewer = self.query_one("#content", GemtextViewer)
 
-        if self._initial_url:
+        # Use initial URL from command line, or fall back to configured home page
+        url = self._initial_url or self.config_manager.home_page
+
+        if url:
             # Auto-prefix gemini:// if not present
-            url = self._initial_url
             if not url.startswith("gemini://"):
                 url = f"gemini://{url}"
 

@@ -222,8 +222,6 @@ Astronomo is actively developed. Here's what's coming next:
 - **Downloads** — Save pages and files to disk
 - **Custom Keybindings** — Vi/Emacs-style key configurations
 
-See [ROADMAP.md](ROADMAP.md) for the full development plan and progress.
-
 ---
 
 ## Contributing
@@ -251,8 +249,6 @@ uv run pytest
 # Run with Textual devtools
 uv run textual run --dev src/astronomo/astronomo.py
 ```
-
-Check [ROADMAP.md](ROADMAP.md) for planned features and contribution opportunities.
 
 ---
 
