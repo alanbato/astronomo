@@ -74,12 +74,14 @@ class Folder:
         id: Unique identifier (UUID)
         name: Display name of the folder
         parent_id: ID of parent folder for nesting (future use)
+        color: Background color as hex string (e.g., "#4a4a5a") or None for default
         created_at: When the folder was created
     """
 
     id: str
     name: str
     parent_id: str | None = None
+    color: str | None = None
     created_at: datetime = field(default_factory=datetime.now)
 
     @classmethod
@@ -100,6 +102,8 @@ class Folder:
         }
         if self.parent_id is not None:
             data["parent_id"] = self.parent_id
+        if self.color is not None:
+            data["color"] = self.color
         return data
 
     @classmethod
@@ -109,6 +113,7 @@ class Folder:
             id=data["id"],
             name=data["name"],
             parent_id=data.get("parent_id"),
+            color=data.get("color"),
             created_at=datetime.fromisoformat(data["created_at"]),
         )
 
@@ -305,6 +310,23 @@ class BookmarkManager:
         for folder in self.folders:
             if folder.id == folder_id:
                 folder.name = name
+                self._save()
+                return True
+        return False
+
+    def update_folder_color(self, folder_id: str, color: str | None) -> bool:
+        """Update a folder's background color.
+
+        Args:
+            folder_id: ID of the folder to update
+            color: Hex color string (e.g., "#4a4a5a") or None for default
+
+        Returns:
+            True if folder was found and updated, False otherwise
+        """
+        for folder in self.folders:
+            if folder.id == folder_id:
+                folder.color = color
                 self._save()
                 return True
         return False

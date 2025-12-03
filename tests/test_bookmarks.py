@@ -86,6 +86,15 @@ class TestFolder:
         assert data["id"] == folder.id
         assert "created_at" in data
         assert "parent_id" not in data  # Should not include None values
+        assert "color" not in data  # Should not include None values
+
+    def test_folder_to_dict_with_color(self) -> None:
+        """Test converting folder with color to dictionary."""
+        folder = Folder.create(name="Colored Folder")
+        folder.color = "#4a4a5a"
+        data = folder.to_dict()
+
+        assert data["color"] == "#4a4a5a"
 
     def test_folder_from_dict(self) -> None:
         """Test creating folder from dictionary."""
@@ -99,6 +108,32 @@ class TestFolder:
         assert folder.id == "folder-id"
         assert folder.name == "Test Folder"
         assert folder.parent_id is None
+        assert folder.color is None
+
+    def test_folder_from_dict_with_color(self) -> None:
+        """Test creating folder with color from dictionary."""
+        data = {
+            "id": "folder-id",
+            "name": "Colored Folder",
+            "color": "#b0c4de",
+            "created_at": "2025-01-01T12:00:00",
+        }
+        folder = Folder.from_dict(data)
+
+        assert folder.color == "#b0c4de"
+
+    def test_folder_without_color_backward_compatible(self) -> None:
+        """Test that folders without color field load correctly (backward compatibility)."""
+        data = {
+            "id": "old-folder",
+            "name": "Old Folder",
+            "created_at": "2024-01-01T12:00:00",
+        }
+        folder = Folder.from_dict(data)
+
+        assert folder.id == "old-folder"
+        assert folder.name == "Old Folder"
+        assert folder.color is None
 
 
 class TestBookmarkManager:
@@ -263,6 +298,41 @@ class TestBookmarkManager:
 
         assert result is True
         assert folder.name == "New Name"
+
+    def test_update_folder_color(self, manager: BookmarkManager) -> None:
+        """Test setting a folder's color."""
+        folder = manager.add_folder("Test")
+        result = manager.update_folder_color(folder.id, "#4a4a5a")
+
+        assert result is True
+        assert folder.color == "#4a4a5a"
+
+    def test_update_folder_color_to_none(self, manager: BookmarkManager) -> None:
+        """Test clearing a folder's color."""
+        folder = manager.add_folder("Test")
+        manager.update_folder_color(folder.id, "#4a4a5a")
+        result = manager.update_folder_color(folder.id, None)
+
+        assert result is True
+        assert folder.color is None
+
+    def test_update_folder_color_not_found(self, manager: BookmarkManager) -> None:
+        """Test updating color for non-existent folder."""
+        result = manager.update_folder_color("fake-id", "#4a4a5a")
+        assert result is False
+
+    def test_folder_color_persistence(self, temp_config_dir: Path) -> None:
+        """Test that folder color is persisted to disk."""
+        manager1 = BookmarkManager(config_dir=temp_config_dir)
+        folder = manager1.add_folder("Colored Folder")
+        manager1.update_folder_color(folder.id, "#b0c4de")
+
+        # Load in new manager
+        manager2 = BookmarkManager(config_dir=temp_config_dir)
+        loaded_folder = manager2.get_folder(folder.id)
+
+        assert loaded_folder is not None
+        assert loaded_folder.color == "#b0c4de"
 
     def test_get_folder(self, manager: BookmarkManager) -> None:
         """Test getting a folder by ID."""

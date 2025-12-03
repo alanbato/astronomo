@@ -22,14 +22,15 @@ class FolderWidget(Static):
         width: 100%;
         height: auto;
         padding: 0 1;
+        color: auto;
     }
 
     FolderWidget:hover {
-        background: $surface;
+        text-style: bold;
     }
 
     FolderWidget.-selected {
-        background: $accent-muted;
+        text-style: bold reverse;
     }
     """
 
@@ -47,6 +48,11 @@ class FolderWidget(Static):
         super().__init__(**kwargs)
         self.folder = folder
         self.collapsed = collapsed
+
+    def on_mount(self) -> None:
+        """Apply folder color on mount."""
+        if self.folder.color:
+            self.styles.background = self.folder.color
 
     def render(self) -> str:
         indicator = (

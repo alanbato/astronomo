@@ -219,9 +219,11 @@ class TestEditItemModal:
             await pilot.pause()
             name_input = modal.query_one("#name-input", Input)
             name_input.value = "New Folder Name"
+            name_input.focus()
             await pilot.pause()
 
-            await pilot.click("#save-btn")
+            # Use Enter key to save (more robust than clicking button)
+            await pilot.press("enter")
             await pilot.pause()
 
         # Name should be updated
@@ -289,6 +291,38 @@ class TestEditItemModal:
             await pilot.pause()
 
         assert bookmark.title == "Updated via Enter"
+
+    @pytest.mark.asyncio
+    async def test_edit_folder_shows_color_picker(self, bookmark_manager):
+        """Test that color picker is shown when editing a folder."""
+        from astronomo.widgets.color_picker import ColorPicker
+
+        folder = bookmark_manager.add_folder("Test Folder")
+        modal = EditItemModal(bookmark_manager, folder)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            # Color picker should be present
+            color_pickers = modal.query(ColorPicker)
+            assert len(color_pickers) == 1
+
+    @pytest.mark.asyncio
+    async def test_edit_bookmark_no_color_picker(self, bookmark_manager):
+        """Test that color picker is NOT shown when editing a bookmark."""
+        from astronomo.widgets.color_picker import ColorPicker
+
+        bookmark = bookmark_manager.add_bookmark(
+            "gemini://example.com/", "Test Bookmark"
+        )
+        modal = EditItemModal(bookmark_manager, bookmark)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            # Color picker should NOT be present
+            color_pickers = modal.query(ColorPicker)
+            assert len(color_pickers) == 0
 
 
 class TestSaveSnapshotModal:

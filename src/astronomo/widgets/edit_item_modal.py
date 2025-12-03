@@ -10,6 +10,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label
 
 from astronomo.bookmarks import Bookmark, BookmarkManager, Folder
+from astronomo.widgets.color_picker import ColorPicker
 
 
 class EditItemModal(ModalScreen[bool]):
@@ -26,7 +27,7 @@ class EditItemModal(ModalScreen[bool]):
     }
 
     EditItemModal > Container {
-        width: 50;
+        width: 55;
         height: auto;
         border: thick $primary;
         background: $surface;
@@ -76,6 +77,10 @@ class EditItemModal(ModalScreen[bool]):
         self.manager = manager
         self.item = item
         self._is_bookmark = isinstance(item, Bookmark)
+        # Track selected color for folders
+        self._selected_color: str | None = (
+            None if self._is_bookmark else item.color  # type: ignore[union-attr]
+        )
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
@@ -93,6 +98,13 @@ class EditItemModal(ModalScreen[bool]):
                 placeholder="Enter new name",
                 id="name-input",
             )
+
+            # Show color picker for folders only
+            if not self._is_bookmark:
+                yield ColorPicker(
+                    current_color=self._selected_color,
+                    id="color-picker",
+                )
 
             with Horizontal(classes="button-row"):
                 yield Button("Cancel", variant="default", id="cancel-btn")
@@ -114,7 +126,13 @@ class EditItemModal(ModalScreen[bool]):
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle Enter key in input."""
-        self._save_changes()
+        # Only save if it's the name input (not the color picker's hex input)
+        if event.input.id == "name-input":
+            self._save_changes()
+
+    def on_color_picker_color_changed(self, event: ColorPicker.ColorChanged) -> None:
+        """Handle color selection changes."""
+        self._selected_color = event.color
 
     def _save_changes(self) -> None:
         """Save the changes and dismiss."""
@@ -128,6 +146,7 @@ class EditItemModal(ModalScreen[bool]):
             self.manager.update_bookmark(self.item.id, title=new_name)
         else:
             self.manager.rename_folder(self.item.id, new_name)
+            self.manager.update_folder_color(self.item.id, self._selected_color)
 
         self.dismiss(True)
 
