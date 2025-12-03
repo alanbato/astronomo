@@ -6,6 +6,7 @@ for managing and navigating bookmarks.
 
 from textual.binding import Binding
 from textual.containers import Container, VerticalScroll
+from textual.events import Click
 from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
@@ -35,6 +36,13 @@ class FolderWidget(Static):
     COLLAPSED_INDICATOR = "▶"
     EXPANDED_INDICATOR = "▼"
 
+    class Clicked(Message):
+        """Emitted when the folder is clicked."""
+
+        def __init__(self, folder: Folder) -> None:
+            self.folder = folder
+            super().__init__()
+
     def __init__(self, folder: Folder, collapsed: bool = False, **kwargs) -> None:
         super().__init__(**kwargs)
         self.folder = folder
@@ -50,6 +58,11 @@ class FolderWidget(Static):
         """Toggle collapsed state."""
         self.collapsed = not self.collapsed
         self.refresh()
+
+    def on_click(self, event: Click) -> None:
+        """Handle click to toggle folder."""
+        event.stop()
+        self.post_message(self.Clicked(self.folder))
 
 
 class BookmarkWidget(Static):
@@ -75,6 +88,13 @@ class BookmarkWidget(Static):
     }
     """
 
+    class Clicked(Message):
+        """Emitted when the bookmark is clicked."""
+
+        def __init__(self, bookmark: Bookmark) -> None:
+            self.bookmark = bookmark
+            super().__init__()
+
     def __init__(self, bookmark: Bookmark, indented: bool = False, **kwargs) -> None:
         super().__init__(**kwargs)
         self.bookmark = bookmark
@@ -83,6 +103,11 @@ class BookmarkWidget(Static):
 
     def render(self) -> str:
         return self.bookmark.title
+
+    def on_click(self, event: Click) -> None:
+        """Handle click to open bookmark."""
+        event.stop()
+        self.post_message(self.Clicked(self.bookmark))
 
 
 class BookmarksSidebar(Container):
@@ -299,10 +324,30 @@ class BookmarksSidebar(Container):
         """Request creation of a new folder."""
         self.post_message(self.NewFolderRequested())
 
-    def on_click(self, event) -> None:
-        """Handle click events to select items."""
-        # Find which item was clicked
+    def _select_item_widget(self, widget: FolderWidget | BookmarkWidget) -> None:
+        """Update selection to match the given widget."""
         for i, item in enumerate(self._items):
-            if item.region.contains(event.x, event.y):
+            if item is widget:
                 self.selected_index = i
                 break
+
+    def on_folder_widget_clicked(self, event: FolderWidget.Clicked) -> None:
+        """Handle folder click to toggle and update selection."""
+        # Find the widget that posted this message
+        widget = event._sender
+        if isinstance(widget, FolderWidget):
+            self._select_item_widget(widget)
+            # Toggle folder
+            folder_id = event.folder.id
+            if folder_id in self._collapsed_folders:
+                self._collapsed_folders.remove(folder_id)
+            else:
+                self._collapsed_folders.add(folder_id)
+            self.refresh_tree()
+
+    def on_bookmark_widget_clicked(self, event: BookmarkWidget.Clicked) -> None:
+        """Handle bookmark click to open and update selection."""
+        widget = event._sender
+        if isinstance(widget, BookmarkWidget):
+            self._select_item_widget(widget)
+        self.post_message(self.BookmarkSelected(event.bookmark))

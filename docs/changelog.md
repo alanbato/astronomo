@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Improved error handling for snapshot saves with user-friendly notifications
 - Better hostname sanitization for snapshot filenames (prevents filesystem issues)
+- Bookmarks sidebar items are now clickable: clicking a bookmark opens it, clicking a folder toggles expand/collapse
 
 ## [0.4.0] - 2025-12-02
 
