@@ -13,10 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic text contrast for folder names on colored backgrounds
 - Bookmarks sidebar items are now clickable: clicking a bookmark opens it, clicking a folder toggles expand/collapse
 - Page snapshot save feature (Ctrl+S): Save current page as a .gmi file with configurable directory
-
-### Fixed
 - Improved error handling for snapshot saves with user-friendly notifications
 - Better hostname sanitization for snapshot filenames (prevents filesystem issues)
+- Import identities from Lagrange browser: Settings > Certificates now includes an "Import from Lagrange" button that discovers and imports existing Lagrange client certificates
 
 ## [0.4.0] - 2025-12-02
 

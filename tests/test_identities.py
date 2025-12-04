@@ -5,8 +5,14 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from nauyaca.security.certificates import generate_self_signed_cert
 
-from astronomo.identities import Identity, IdentityManager
+from astronomo.identities import (
+    Identity,
+    IdentityManager,
+    LagrangeImportResult,
+    get_lagrange_idents_path,
+)
 
 
 class TestIdentity:
@@ -567,3 +573,265 @@ class TestIdentityManager:
         # Identity should appear only once
         assert len(matches) == 1
         assert matches[0].id == identity.id
+
+
+class TestGetLagrangePath:
+    """Tests for Lagrange path detection."""
+
+    def test_returns_path_or_none(self) -> None:
+        """Test that function returns Path or None."""
+        result = get_lagrange_idents_path()
+        assert result is None or isinstance(result, Path)
+
+
+class TestLagrangeImportResult:
+    """Tests for LagrangeImportResult dataclass."""
+
+    def test_default_values(self) -> None:
+        """Test that dataclass has empty defaults."""
+        result = LagrangeImportResult()
+        assert result.imported == []
+        assert result.skipped_duplicates == []
+        assert result.errors == []
+
+
+class TestDiscoverLagrangeIdentities:
+    """Tests for discovering Lagrange identity files."""
+
+    @pytest.fixture
+    def temp_lagrange_dir(self):
+        """Create a temporary Lagrange-like idents directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create a temporary config directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def manager(self, temp_config_dir: Path) -> IdentityManager:
+        """Create IdentityManager with temp storage."""
+        return IdentityManager(config_dir=temp_config_dir)
+
+    def test_empty_directory(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test discovery in empty directory."""
+        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+        assert pairs == []
+
+    def test_discovers_valid_pairs(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test discovering valid .crt/.key pairs."""
+        # Create a valid certificate pair
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test.example.com",
+            valid_days=365,
+        )
+
+        (temp_lagrange_dir / "myident.crt").write_bytes(cert_pem)
+        (temp_lagrange_dir / "myident.key").write_bytes(key_pem)
+
+        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+
+        assert len(pairs) == 1
+        name, cert_path, key_path = pairs[0]
+        assert name == "myident"
+        assert cert_path.suffix == ".crt"
+        assert key_path.suffix == ".key"
+
+    def test_ignores_orphaned_crt(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test that .crt without matching .key is ignored."""
+        cert_pem, _ = generate_self_signed_cert(hostname="test", valid_days=365)
+        (temp_lagrange_dir / "orphan.crt").write_bytes(cert_pem)
+
+        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+        assert pairs == []
+
+    def test_discovers_multiple_pairs(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test discovering multiple identity pairs."""
+        for name in ["ident1", "ident2", "ident3"]:
+            cert_pem, key_pem = generate_self_signed_cert(
+                hostname=f"{name}.example.com",
+                valid_days=365,
+            )
+            (temp_lagrange_dir / f"{name}.crt").write_bytes(cert_pem)
+            (temp_lagrange_dir / f"{name}.key").write_bytes(key_pem)
+
+        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+
+        assert len(pairs) == 3
+        names = {name for name, _, _ in pairs}
+        assert names == {"ident1", "ident2", "ident3"}
+
+
+class TestImportFromLagrange:
+    """Tests for the full import workflow."""
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create a temporary config directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def temp_lagrange_dir(self):
+        """Create a temporary Lagrange-like idents directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def manager(self, temp_config_dir: Path) -> IdentityManager:
+        """Create IdentityManager with temp storage."""
+        return IdentityManager(config_dir=temp_config_dir)
+
+    def test_import_single_identity(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test importing a single identity."""
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test.example.com",
+            valid_days=365,
+        )
+        (temp_lagrange_dir / "testident.crt").write_bytes(cert_pem)
+        (temp_lagrange_dir / "testident.key").write_bytes(key_pem)
+
+        result = manager.import_from_lagrange(temp_lagrange_dir)
+
+        assert len(result.imported) == 1
+        assert result.imported[0].name == "testident"
+        assert result.skipped_duplicates == []
+        assert result.errors == []
+
+    def test_skip_duplicate_fingerprint(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test that identities with same fingerprint are skipped."""
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test.example.com",
+            valid_days=365,
+        )
+        (temp_lagrange_dir / "ident1.crt").write_bytes(cert_pem)
+        (temp_lagrange_dir / "ident1.key").write_bytes(key_pem)
+
+        # First import
+        result1 = manager.import_from_lagrange(temp_lagrange_dir)
+        assert len(result1.imported) == 1
+
+        # Second import with same files
+        result2 = manager.import_from_lagrange(temp_lagrange_dir)
+        assert len(result2.imported) == 0
+        assert len(result2.skipped_duplicates) == 1
+        # Skipped duplicates now show truncated fingerprint, not name
+        assert result2.skipped_duplicates[0].startswith("sha256:")
+
+    def test_import_sets_permissions(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test that imported key files have 0600 permissions."""
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test",
+            valid_days=365,
+        )
+        (temp_lagrange_dir / "secureident.crt").write_bytes(cert_pem)
+        (temp_lagrange_dir / "secureident.key").write_bytes(key_pem)
+
+        result = manager.import_from_lagrange(temp_lagrange_dir)
+
+        assert len(result.imported) == 1
+        mode = result.imported[0].key_path.stat().st_mode & 0o777
+        assert mode == 0o600
+
+    def test_directory_not_found(self, manager: IdentityManager) -> None:
+        """Test FileNotFoundError for missing directory."""
+        with pytest.raises(FileNotFoundError):
+            manager.import_from_lagrange(Path("/nonexistent/path"))
+
+    def test_url_prefixes_empty(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test that imported identities have empty URL prefixes."""
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test",
+            valid_days=365,
+        )
+        (temp_lagrange_dir / "ident.crt").write_bytes(cert_pem)
+        (temp_lagrange_dir / "ident.key").write_bytes(key_pem)
+
+        result = manager.import_from_lagrange(temp_lagrange_dir)
+
+        assert result.imported[0].url_prefixes == []
+
+    def test_import_multiple_identities(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test importing multiple identities at once."""
+        for name in ["alice", "bob", "charlie"]:
+            cert_pem, key_pem = generate_self_signed_cert(
+                hostname=f"{name}.example.com",
+                valid_days=365,
+            )
+            (temp_lagrange_dir / f"{name}.crt").write_bytes(cert_pem)
+            (temp_lagrange_dir / f"{name}.key").write_bytes(key_pem)
+
+        result = manager.import_from_lagrange(temp_lagrange_dir)
+
+        assert len(result.imported) == 3
+        names = {i.name for i in result.imported}
+        assert names == {"alice", "bob", "charlie"}
+
+    def test_imported_identity_persists(
+        self, temp_config_dir: Path, temp_lagrange_dir: Path
+    ) -> None:
+        """Test that imported identities persist across manager instances."""
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test",
+            valid_days=365,
+        )
+        (temp_lagrange_dir / "persistent.crt").write_bytes(cert_pem)
+        (temp_lagrange_dir / "persistent.key").write_bytes(key_pem)
+
+        # Import with first manager
+        manager1 = IdentityManager(config_dir=temp_config_dir)
+        result = manager1.import_from_lagrange(temp_lagrange_dir)
+        imported_id = result.imported[0].id
+
+        # Load with second manager
+        manager2 = IdentityManager(config_dir=temp_config_dir)
+        loaded = manager2.get_identity(imported_id)
+
+        assert loaded is not None
+        assert loaded.name == "persistent"
+
+    def test_has_identity_with_fingerprint(self, manager: IdentityManager) -> None:
+        """Test checking for existing fingerprint."""
+        identity = manager.create_identity(name="Test", hostname="example.com")
+
+        assert manager.has_identity_with_fingerprint(identity.fingerprint) is True
+        assert manager.has_identity_with_fingerprint("nonexistent") is False
+
+    def test_import_with_custom_names(
+        self, manager: IdentityManager, temp_lagrange_dir: Path
+    ) -> None:
+        """Test importing with custom names provided."""
+        cert_pem, key_pem = generate_self_signed_cert(
+            hostname="test.example.com",
+            valid_days=365,
+        )
+        cert_path = temp_lagrange_dir / "original_name.crt"
+        cert_path.write_bytes(cert_pem)
+        (temp_lagrange_dir / "original_name.key").write_bytes(key_pem)
+
+        # Import with custom name
+        custom_names = {cert_path: "My Custom Identity Name"}
+        result = manager.import_from_lagrange(temp_lagrange_dir, names=custom_names)
+
+        assert len(result.imported) == 1
+        assert result.imported[0].name == "My Custom Identity Name"

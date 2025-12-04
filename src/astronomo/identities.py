@@ -4,6 +4,7 @@ This module provides identity storage for Gemini client certificates
 with TOML persistence and URL prefix matching.
 """
 
+import platform
 import tomllib
 import uuid
 from dataclasses import dataclass, field
@@ -19,6 +20,65 @@ from nauyaca.security.certificates import (
     is_certificate_expired,
     load_certificate,
 )
+
+
+def get_lagrange_idents_path() -> Path | None:
+    """Get the Lagrange idents directory path based on the current OS.
+
+    Checks multiple possible locations including Flatpak installations.
+
+    Returns:
+        Path to Lagrange idents directory, or None if not found.
+    """
+    system = platform.system()
+    home = Path.home()
+
+    # Define possible paths in order of preference
+    paths: list[Path] = []
+
+    if system == "Linux":
+        # Standard Linux path
+        paths.append(home / ".config" / "lagrange" / "idents")
+        # Flatpak installation path
+        paths.append(
+            home
+            / ".var"
+            / "app"
+            / "fi.skyjake.Lagrange"
+            / "config"
+            / "lagrange"
+            / "idents"
+        )
+    elif system == "Darwin":  # macOS
+        paths.append(
+            home / "Library" / "Application Support" / "fi.skyjake.Lagrange" / "idents"
+        )
+    elif system == "Windows":
+        paths.append(home / "AppData" / "Roaming" / "fi.skyjake.Lagrange" / "idents")
+    else:
+        return None
+
+    # Return the first path that exists
+    for path in paths:
+        if path.exists() and path.is_dir():
+            return path
+
+    return None
+
+
+@dataclass
+class LagrangeImportResult:
+    """Result of importing identities from Lagrange.
+
+    Attributes:
+        imported: List of successfully imported Identity objects
+        skipped_duplicates: List of identity names that were skipped (already exist by fingerprint)
+        errors: List of (filename, error_message) tuples for failed imports
+    """
+
+    imported: list["Identity"] = field(default_factory=list)
+    skipped_duplicates: list[str] = field(default_factory=list)
+    errors: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -444,3 +504,163 @@ class IdentityManager:
 
         self._save()
         return True
+
+    # Lagrange import operations
+
+    def has_identity_with_fingerprint(self, fingerprint: str) -> bool:
+        """Check if an identity with the given fingerprint already exists.
+
+        Args:
+            fingerprint: SHA-256 fingerprint to check
+
+        Returns:
+            True if an identity with this fingerprint exists
+        """
+        return any(i.fingerprint == fingerprint for i in self.identities)
+
+    def discover_lagrange_identities(
+        self, idents_path: Path
+    ) -> list[tuple[str, Path, Path]]:
+        """Discover .crt/.key pairs in a Lagrange idents directory.
+
+        Args:
+            idents_path: Path to Lagrange idents directory
+
+        Returns:
+            List of (name, cert_path, key_path) tuples for valid pairs
+        """
+        pairs = []
+        crt_files = list(idents_path.glob("*.crt"))
+
+        for crt_path in crt_files:
+            name = crt_path.stem  # e.g., "myident" from "myident.crt"
+            key_path = crt_path.with_suffix(".key")
+
+            if key_path.exists():
+                pairs.append((name, crt_path, key_path))
+
+        return pairs
+
+    def import_identity_from_files(
+        self,
+        name: str,
+        source_cert_path: Path,
+        source_key_path: Path,
+    ) -> Identity:
+        """Import an identity from existing certificate and key files.
+
+        Args:
+            name: Human-readable name for the identity
+            source_cert_path: Path to source certificate PEM file
+            source_key_path: Path to source private key PEM file
+
+        Returns:
+            The imported Identity
+
+        Raises:
+            ValueError: If certificate is invalid or expired
+            FileNotFoundError: If source files don't exist
+        """
+        self._ensure_dirs()
+
+        # Validate and read certificate
+        cert = load_certificate(source_cert_path)
+        if is_certificate_expired(cert):
+            raise ValueError("Certificate is expired")
+
+        # Get fingerprint and expiration
+        fingerprint = get_certificate_fingerprint_from_path(source_cert_path)
+        cert_info = get_certificate_info(cert)
+
+        # Parse expiration date
+        expires_at = None
+        if "not_after" in cert_info:
+            try:
+                expires_at = datetime.fromisoformat(cert_info["not_after"])
+            except ValueError:
+                pass
+
+        # Generate new ID and destination paths
+        identity_id = str(uuid.uuid4())
+        dest_cert_path = self.certs_dir / f"{identity_id}.pem"
+        dest_key_path = self.certs_dir / f"{identity_id}.key"
+
+        # Copy files
+        dest_cert_path.write_bytes(source_cert_path.read_bytes())
+        dest_key_path.write_bytes(source_key_path.read_bytes())
+
+        # Set restrictive permissions on key file
+        dest_key_path.chmod(0o600)
+
+        # Create identity object
+        identity = Identity(
+            id=identity_id,
+            name=name,
+            fingerprint=fingerprint,
+            cert_path=dest_cert_path,
+            key_path=dest_key_path,
+            url_prefixes=[],  # Empty - Lagrange metadata not available
+            expires_at=expires_at,
+        )
+
+        self.identities.append(identity)
+        self._save()
+        return identity
+
+    def import_from_lagrange(
+        self,
+        idents_path: Path | None = None,
+        names: dict[Path, str] | None = None,
+    ) -> LagrangeImportResult:
+        """Import identities from Lagrange browser.
+
+        Discovers .crt/.key pairs in the Lagrange idents directory,
+        validates certificates, and imports them into Astronomo.
+
+        Args:
+            idents_path: Optional explicit path to idents directory.
+                        If None, auto-detects based on OS.
+            names: Optional dict mapping cert_path to identity name.
+                   If provided, uses these names instead of filenames.
+
+        Returns:
+            LagrangeImportResult with import statistics
+
+        Raises:
+            FileNotFoundError: If Lagrange idents directory not found
+        """
+        if idents_path is None:
+            idents_path = get_lagrange_idents_path()
+            if idents_path is None:
+                raise FileNotFoundError("Lagrange idents directory not found")
+
+        if not idents_path.exists():
+            raise FileNotFoundError(f"Directory not found: {idents_path}")
+
+        pairs = self.discover_lagrange_identities(idents_path)
+
+        result = LagrangeImportResult()
+
+        for default_name, cert_path, key_path in pairs:
+            try:
+                # Check for duplicate by fingerprint
+                fingerprint = get_certificate_fingerprint_from_path(cert_path)
+                if self.has_identity_with_fingerprint(fingerprint):
+                    # Use fingerprint (truncated) for skipped duplicates
+                    result.skipped_duplicates.append(fingerprint[:32] + "...")
+                    continue
+
+                # Get name from names dict or fall back to filename
+                name = names.get(cert_path, default_name) if names else default_name
+
+                identity = self.import_identity_from_files(name, cert_path, key_path)
+                result.imported.append(identity)
+            except ValueError as e:
+                # Use fingerprint for error reporting
+                error_id = fingerprint[:32] + "..." if fingerprint else default_name
+                result.errors.append((error_id, str(e)))
+            except Exception as e:
+                error_id = fingerprint[:32] + "..." if fingerprint else default_name
+                result.errors.append((error_id, f"Unexpected error: {e}"))
+
+        return result

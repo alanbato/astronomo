@@ -8,7 +8,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.widgets import Button, Label, Static
 
-from astronomo.identities import Identity, IdentityManager
+from astronomo.identities import Identity, IdentityManager, LagrangeImportResult
 
 if TYPE_CHECKING:
     from astronomo.astronomo_app import Astronomo
@@ -164,8 +164,14 @@ class CertificatesSettings(Static):
         height: 1fr;
     }
 
-    CertificatesSettings .create-button {
+    CertificatesSettings .button-row-top {
+        width: 100%;
+        height: auto;
         margin-bottom: 1;
+    }
+
+    CertificatesSettings .button-row-top Button {
+        margin-right: 1;
     }
 
     CertificatesSettings .empty-state {
@@ -180,12 +186,17 @@ class CertificatesSettings(Static):
         self.identity_manager = identity_manager
 
     def compose(self) -> ComposeResult:
-        yield Button(
-            "+ Create New Identity",
-            variant="primary",
-            id="create-identity-btn",
-            classes="create-button",
-        )
+        with Horizontal(classes="button-row-top"):
+            yield Button(
+                "+ Create New Identity",
+                variant="primary",
+                id="create-identity-btn",
+            )
+            yield Button(
+                "Import from Lagrange",
+                variant="default",
+                id="import-lagrange-btn",
+            )
 
         with VerticalScroll(id="identity-list"):
             yield from self._compose_identity_list()
@@ -224,9 +235,12 @@ class CertificatesSettings(Static):
                 )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle the create button press."""
+        """Handle button presses."""
         if event.button.id == "create-identity-btn":
             self._show_create_modal()
+            event.stop()
+        elif event.button.id == "import-lagrange-btn":
+            self._show_import_modal()
             event.stop()
 
     def _show_create_modal(self) -> None:
@@ -242,6 +256,21 @@ class CertificatesSettings(Static):
     async def _on_identity_created(self, identity: Identity | None) -> None:
         """Handle identity creation result."""
         if identity is not None:
+            await self.refresh_list()
+
+    def _show_import_modal(self) -> None:
+        """Show the import from Lagrange modal."""
+        from astronomo.widgets.certificates import ImportLagrangeModal
+
+        app: Astronomo = self.app  # type: ignore[assignment]
+        app.push_screen(
+            ImportLagrangeModal(self.identity_manager),
+            callback=self._on_import_complete,
+        )
+
+    async def _on_import_complete(self, result: LagrangeImportResult | None) -> None:
+        """Handle import completion."""
+        if result is not None and result.imported:
             await self.refresh_list()
 
     def on_identity_list_item_edit_requested(

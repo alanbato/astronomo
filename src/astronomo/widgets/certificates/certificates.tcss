@@ -230,3 +230,83 @@ ManageUrlsModal .button-row {
     align: right middle;
     padding-top: 1;
 }
+
+/* Import from Lagrange Modal */
+ImportLagrangeModal {
+    align: center middle;
+}
+
+ImportLagrangeModal > Container {
+    width: 65;
+    height: auto;
+    max-height: 80%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+ImportLagrangeModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+ImportLagrangeModal .info-text {
+    padding: 1 0;
+}
+
+ImportLagrangeModal .warning-text {
+    color: $warning;
+    padding: 1 0;
+}
+
+ImportLagrangeModal .identity-preview-list {
+    width: 100%;
+    height: auto;
+    max-height: 20;
+    border: solid $primary;
+    margin: 1 0;
+    padding: 1;
+}
+
+ImportLagrangeModal .identity-import-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+ImportLagrangeModal .identity-name-input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+ImportLagrangeModal .identity-fingerprint {
+    width: auto;
+    color: $text-muted;
+    padding: 1 0;
+}
+
+ImportLagrangeModal .identity-duplicate {
+    width: 100%;
+    color: $text-muted;
+    text-style: italic;
+    padding: 1 0;
+}
+
+ImportLagrangeModal .field-hint {
+    color: $text-muted;
+    text-style: italic;
+    padding: 1 0;
+}
+
+ImportLagrangeModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}
+
+ImportLagrangeModal .button-row Button {
+    margin-left: 1;
+}

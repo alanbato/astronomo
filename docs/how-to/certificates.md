@@ -29,6 +29,44 @@ When a site requests a certificate, Astronomo prompts you to select or create on
 3. Select "Create New Identity"
 4. Enter identity details
 
+## Importing from Lagrange
+
+If you've been using the [Lagrange](https://gmi.skyjake.fi/lagrange/) Gemini browser, you can import your existing identities into Astronomo.
+
+### How to Import
+
+1. Press ++ctrl+comma++ to open Settings
+2. Navigate to the Certificates section
+3. Click "Import from Lagrange"
+4. The modal shows all discovered identities from Lagrange
+5. Set a name for each identity you want to import
+6. Click "Import"
+
+### What Gets Imported
+
+- Certificate files (`.crt`)
+- Private key files (`.key`)
+- You set custom names during import
+
+### What Doesn't Get Imported
+
+- URL associations (Lagrange stores these in a proprietary binary format)
+- You'll need to manually associate URLs with imported identities
+
+### Supported Lagrange Installations
+
+Astronomo automatically detects Lagrange's identity storage in these locations:
+
+| Platform | Standard Path | Flatpak Path |
+|----------|--------------|--------------|
+| Linux | `~/.config/lagrange/idents/` | `~/.var/app/fi.skyjake.Lagrange/config/lagrange/idents/` |
+| macOS | `~/Library/Application Support/fi.skyjake.Lagrange/idents/` | - |
+| Windows | `%APPDATA%/fi.skyjake.Lagrange/idents/` | - |
+
+### Duplicate Detection
+
+If you try to import an identity that already exists in Astronomo (detected by certificate fingerprint), it will be marked as "already imported" and skipped automatically.
+
 ## Selecting a Certificate
 
 ### Proactive Selection (Session-Based)
