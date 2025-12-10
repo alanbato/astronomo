@@ -47,7 +47,7 @@ class AppearanceSettings(Static):
         self.config_manager = config_manager
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll():
+        with VerticalScroll(can_focus=False):
             for setting in APPEARANCE_SETTINGS:
                 current_value = self._get_value(setting.key)
                 yield SettingRow(

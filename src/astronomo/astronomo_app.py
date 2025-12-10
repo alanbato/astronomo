@@ -110,6 +110,7 @@ class Astronomo(App[None]):
             yield Button("\u25c0", id="back-button", disabled=True)
             yield Button("\u25b6", id="forward-button", disabled=True)
             yield Input(id="url-input")
+            yield Button("\u2699", id="settings-button")
         with Horizontal(id="main-content"):
             yield GemtextViewer(id="content")
             yield BookmarksSidebar(self.bookmarks, id="bookmarks-sidebar")
@@ -614,6 +615,8 @@ class Astronomo(App[None]):
             self.action_navigate_back()
         elif event.button.id == "forward-button":
             self.action_navigate_forward()
+        elif event.button.id == "settings-button":
+            self.action_toggle_settings()
 
     def action_navigate_back(self) -> None:
         """Navigate back in history."""

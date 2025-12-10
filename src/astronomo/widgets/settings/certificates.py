@@ -203,7 +203,7 @@ class CertificatesSettings(Static):
                 id="import-lagrange-btn",
             )
 
-        with VerticalScroll(id="identity-list"):
+        with VerticalScroll(id="identity-list", can_focus=False):
             yield from self._compose_identity_list()
 
     def _compose_identity_list(self) -> ComposeResult:

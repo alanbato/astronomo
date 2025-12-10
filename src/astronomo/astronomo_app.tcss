@@ -4,7 +4,7 @@
     width: 100%;
 }
 
-#back-button, #forward-button {
+#back-button, #forward-button, #settings-button {
     min-width: 4;
     margin: 0 1;
     background: $surface;
@@ -12,7 +12,7 @@
 }
 
 #url-input {
-    width: 100%;
+    width: 1fr;
     background: $surface;
     margin: 0;
     padding-left: 1;
