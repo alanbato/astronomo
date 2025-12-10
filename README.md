@@ -16,6 +16,8 @@
 
 Whether you're exploring Geminispace for the first time or looking for a better terminal client, Astronomo delivers a seamless browsing experience without leaving your command line.
 
+<img width="1731" height="1017" alt="image" src="https://github.com/user-attachments/assets/88ec1dfe-e6b4-4f34-8720-e17864ce9c50" />
+
 ---
 
 ## Why Astronomo?
