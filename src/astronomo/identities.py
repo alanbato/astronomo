@@ -22,6 +22,98 @@ from nauyaca.security.certificates import (
 )
 
 
+def pem_file_contains_key(file_path: Path) -> bool:
+    """Check if a PEM file contains a private key.
+
+    Args:
+        file_path: Path to the PEM file
+
+    Returns:
+        True if the file contains a private key section
+    """
+    try:
+        content = file_path.read_text()
+        return "-----BEGIN" in content and "PRIVATE KEY-----" in content
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
+def pem_file_contains_certificate(file_path: Path) -> bool:
+    """Check if a PEM file contains a certificate.
+
+    Args:
+        file_path: Path to the PEM file
+
+    Returns:
+        True if the file contains a certificate section
+    """
+    try:
+        content = file_path.read_text()
+        return "-----BEGIN CERTIFICATE-----" in content
+    except (OSError, UnicodeDecodeError):
+        return False
+
+
+def is_combined_pem_file(file_path: Path) -> bool:
+    """Check if a PEM file contains both a certificate and private key.
+
+    Args:
+        file_path: Path to the PEM file
+
+    Returns:
+        True if the file contains both certificate and key
+    """
+    return pem_file_contains_certificate(file_path) and pem_file_contains_key(file_path)
+
+
+def extract_key_from_pem(pem_content: str) -> str:
+    """Extract the private key section from a combined PEM file.
+
+    Args:
+        pem_content: Full content of the PEM file
+
+    Returns:
+        The private key section including BEGIN/END markers
+    """
+    lines = pem_content.split("\n")
+    key_lines = []
+    in_key = False
+
+    for line in lines:
+        if "-----BEGIN" in line and "PRIVATE KEY-----" in line:
+            in_key = True
+        if in_key:
+            key_lines.append(line)
+        if in_key and "-----END" in line and "PRIVATE KEY-----" in line:
+            break
+
+    return "\n".join(key_lines)
+
+
+def extract_cert_from_pem(pem_content: str) -> str:
+    """Extract the certificate section from a combined PEM file.
+
+    Args:
+        pem_content: Full content of the PEM file
+
+    Returns:
+        The certificate section including BEGIN/END markers
+    """
+    lines = pem_content.split("\n")
+    cert_lines = []
+    in_cert = False
+
+    for line in lines:
+        if "-----BEGIN CERTIFICATE-----" in line:
+            in_cert = True
+        if in_cert:
+            cert_lines.append(line)
+        if in_cert and "-----END CERTIFICATE-----" in line:
+            break
+
+    return "\n".join(cert_lines)
+
+
 def get_lagrange_idents_path() -> Path | None:
     """Get the Lagrange idents directory path based on the current OS.
 
@@ -600,6 +692,116 @@ class IdentityManager:
             cert_path=dest_cert_path,
             key_path=dest_key_path,
             url_prefixes=[],  # Empty - Lagrange metadata not available
+            expires_at=expires_at,
+        )
+
+        self.identities.append(identity)
+        self._save()
+        return identity
+
+    def import_identity_from_custom_files(
+        self,
+        name: str,
+        cert_path: Path,
+        key_path: Path | None = None,
+    ) -> Identity:
+        """Import an identity from custom certificate and key files.
+
+        Supports both separate cert/key files and combined PEM files
+        containing both certificate and private key.
+
+        Args:
+            name: Human-readable name for the identity
+            cert_path: Path to certificate PEM file (may also contain key)
+            key_path: Path to private key PEM file. If None, assumes cert_path
+                     contains both certificate and key (combined PEM).
+
+        Returns:
+            The imported Identity
+
+        Raises:
+            ValueError: If certificate is invalid, expired, or files are missing
+            FileNotFoundError: If source files don't exist
+        """
+        self._ensure_dirs()
+
+        # Validate cert file exists
+        if not cert_path.exists():
+            raise FileNotFoundError(f"Certificate file not found: {cert_path}")
+
+        # Check if using combined PEM or separate files
+        if key_path is None:
+            # Combined PEM mode - cert_path should contain both cert and key
+            if not is_combined_pem_file(cert_path):
+                raise ValueError(
+                    "Certificate file does not contain both certificate and private key"
+                )
+
+            # Read and split the combined PEM
+            pem_content = cert_path.read_text()
+            cert_pem = extract_cert_from_pem(pem_content)
+            key_pem = extract_key_from_pem(pem_content)
+
+            if not cert_pem or not key_pem:
+                raise ValueError("Could not extract certificate or key from PEM file")
+        else:
+            # Separate files mode
+            if not key_path.exists():
+                raise FileNotFoundError(f"Key file not found: {key_path}")
+
+            if not pem_file_contains_certificate(cert_path):
+                raise ValueError(
+                    "Certificate file does not contain a valid certificate"
+                )
+
+            if not pem_file_contains_key(key_path):
+                raise ValueError("Key file does not contain a valid private key")
+
+            cert_pem = cert_path.read_text()
+            key_pem = key_path.read_text()
+
+        # Validate and load certificate
+        cert = load_certificate(cert_path)
+        if is_certificate_expired(cert):
+            raise ValueError("Certificate is expired")
+
+        # Get fingerprint and expiration
+        fingerprint = get_certificate_fingerprint_from_path(cert_path)
+
+        # Check for duplicate
+        if self.has_identity_with_fingerprint(fingerprint):
+            raise ValueError("An identity with this certificate already exists")
+
+        cert_info = get_certificate_info(cert)
+
+        # Parse expiration date
+        expires_at = None
+        if "not_after" in cert_info:
+            try:
+                expires_at = datetime.fromisoformat(cert_info["not_after"])
+            except ValueError:
+                pass
+
+        # Generate new ID and destination paths
+        identity_id = str(uuid.uuid4())
+        dest_cert_path = self.certs_dir / f"{identity_id}.pem"
+        dest_key_path = self.certs_dir / f"{identity_id}.key"
+
+        # Write the separated cert and key files
+        dest_cert_path.write_text(cert_pem)
+        dest_key_path.write_text(key_pem)
+
+        # Set restrictive permissions on key file
+        dest_key_path.chmod(0o600)
+
+        # Create identity object
+        identity = Identity(
+            id=identity_id,
+            name=name,
+            fingerprint=fingerprint,
+            cert_path=dest_cert_path,
+            key_path=dest_key_path,
+            url_prefixes=[],
             expires_at=expires_at,
         )
 

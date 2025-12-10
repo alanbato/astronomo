@@ -11,7 +11,12 @@ from astronomo.identities import (
     Identity,
     IdentityManager,
     LagrangeImportResult,
+    extract_cert_from_pem,
+    extract_key_from_pem,
     get_lagrange_idents_path,
+    is_combined_pem_file,
+    pem_file_contains_certificate,
+    pem_file_contains_key,
 )
 
 
@@ -835,3 +840,317 @@ class TestImportFromLagrange:
 
         assert len(result.imported) == 1
         assert result.imported[0].name == "My Custom Identity Name"
+
+
+class TestPemHelperFunctions:
+    """Tests for PEM file helper functions."""
+
+    @pytest.fixture
+    def temp_dir(self):
+        """Create a temporary directory for test files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def cert_and_key(self):
+        """Generate a certificate and key pair."""
+        return generate_self_signed_cert(hostname="test.example.com", valid_days=365)
+
+    def test_pem_file_contains_certificate_true(
+        self, temp_dir: Path, cert_and_key: tuple
+    ) -> None:
+        """Test detecting certificate in PEM file."""
+        cert_pem, _ = cert_and_key
+        cert_path = temp_dir / "cert.pem"
+        cert_path.write_bytes(cert_pem)
+
+        assert pem_file_contains_certificate(cert_path) is True
+
+    def test_pem_file_contains_certificate_false(self, temp_dir: Path) -> None:
+        """Test that key-only file returns False."""
+        _, key_pem = generate_self_signed_cert(hostname="test", valid_days=365)
+        key_path = temp_dir / "key.pem"
+        key_path.write_bytes(key_pem)
+
+        assert pem_file_contains_certificate(key_path) is False
+
+    def test_pem_file_contains_key_true(
+        self, temp_dir: Path, cert_and_key: tuple
+    ) -> None:
+        """Test detecting private key in PEM file."""
+        _, key_pem = cert_and_key
+        key_path = temp_dir / "key.pem"
+        key_path.write_bytes(key_pem)
+
+        assert pem_file_contains_key(key_path) is True
+
+    def test_pem_file_contains_key_false(
+        self, temp_dir: Path, cert_and_key: tuple
+    ) -> None:
+        """Test that cert-only file returns False."""
+        cert_pem, _ = cert_and_key
+        cert_path = temp_dir / "cert.pem"
+        cert_path.write_bytes(cert_pem)
+
+        assert pem_file_contains_key(cert_path) is False
+
+    def test_is_combined_pem_file_true(
+        self, temp_dir: Path, cert_and_key: tuple
+    ) -> None:
+        """Test detecting combined PEM file."""
+        cert_pem, key_pem = cert_and_key
+        combined_path = temp_dir / "combined.pem"
+        combined_path.write_bytes(cert_pem + key_pem)
+
+        assert is_combined_pem_file(combined_path) is True
+
+    def test_is_combined_pem_file_false_cert_only(
+        self, temp_dir: Path, cert_and_key: tuple
+    ) -> None:
+        """Test that cert-only file is not combined."""
+        cert_pem, _ = cert_and_key
+        cert_path = temp_dir / "cert.pem"
+        cert_path.write_bytes(cert_pem)
+
+        assert is_combined_pem_file(cert_path) is False
+
+    def test_is_combined_pem_file_false_key_only(
+        self, temp_dir: Path, cert_and_key: tuple
+    ) -> None:
+        """Test that key-only file is not combined."""
+        _, key_pem = cert_and_key
+        key_path = temp_dir / "key.pem"
+        key_path.write_bytes(key_pem)
+
+        assert is_combined_pem_file(key_path) is False
+
+    def test_extract_cert_from_pem(self, cert_and_key: tuple) -> None:
+        """Test extracting certificate from combined PEM."""
+        cert_pem, key_pem = cert_and_key
+        combined = cert_pem.decode() + key_pem.decode()
+
+        extracted = extract_cert_from_pem(combined)
+
+        assert "-----BEGIN CERTIFICATE-----" in extracted
+        assert "-----END CERTIFICATE-----" in extracted
+        assert "PRIVATE KEY" not in extracted
+
+    def test_extract_key_from_pem(self, cert_and_key: tuple) -> None:
+        """Test extracting key from combined PEM."""
+        cert_pem, key_pem = cert_and_key
+        combined = cert_pem.decode() + key_pem.decode()
+
+        extracted = extract_key_from_pem(combined)
+
+        assert "PRIVATE KEY-----" in extracted
+        assert "-----BEGIN CERTIFICATE-----" not in extracted
+
+    def test_pem_file_nonexistent(self, temp_dir: Path) -> None:
+        """Test handling of nonexistent file."""
+        nonexistent = temp_dir / "nonexistent.pem"
+
+        assert pem_file_contains_certificate(nonexistent) is False
+        assert pem_file_contains_key(nonexistent) is False
+        assert is_combined_pem_file(nonexistent) is False
+
+
+class TestImportCustomFiles:
+    """Tests for importing custom certificate files."""
+
+    @pytest.fixture
+    def temp_config_dir(self):
+        """Create a temporary config directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def temp_source_dir(self):
+        """Create a temporary source directory for cert files."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def manager(self, temp_config_dir: Path) -> IdentityManager:
+        """Create IdentityManager with temp storage."""
+        return IdentityManager(config_dir=temp_config_dir)
+
+    @pytest.fixture
+    def cert_and_key(self):
+        """Generate a certificate and key pair."""
+        return generate_self_signed_cert(hostname="test.example.com", valid_days=365)
+
+    def test_import_separate_files(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test importing from separate cert and key files."""
+        cert_pem, key_pem = cert_and_key
+        cert_path = temp_source_dir / "my-cert.pem"
+        key_path = temp_source_dir / "my-key.key"
+        cert_path.write_bytes(cert_pem)
+        key_path.write_bytes(key_pem)
+
+        identity = manager.import_identity_from_custom_files(
+            name="My Custom Cert",
+            cert_path=cert_path,
+            key_path=key_path,
+        )
+
+        assert identity.name == "My Custom Cert"
+        assert identity.cert_path.exists()
+        assert identity.key_path.exists()
+        assert identity in manager.get_all_identities()
+
+    def test_import_combined_pem(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test importing from combined PEM file."""
+        cert_pem, key_pem = cert_and_key
+        combined_path = temp_source_dir / "combined.pem"
+        combined_path.write_bytes(cert_pem + key_pem)
+
+        identity = manager.import_identity_from_custom_files(
+            name="Combined PEM Cert",
+            cert_path=combined_path,
+            key_path=None,  # Combined mode
+        )
+
+        assert identity.name == "Combined PEM Cert"
+        assert identity.cert_path.exists()
+        assert identity.key_path.exists()
+        # Files should be separated
+        assert pem_file_contains_certificate(identity.cert_path)
+        assert pem_file_contains_key(identity.key_path)
+
+    def test_import_combined_pem_fails_without_key(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test that combined mode fails if file has no key."""
+        cert_pem, _ = cert_and_key
+        cert_only_path = temp_source_dir / "cert-only.pem"
+        cert_only_path.write_bytes(cert_pem)
+
+        with pytest.raises(ValueError, match="does not contain both"):
+            manager.import_identity_from_custom_files(
+                name="Should Fail",
+                cert_path=cert_only_path,
+                key_path=None,
+            )
+
+    def test_import_cert_file_not_found(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+    ) -> None:
+        """Test error when certificate file doesn't exist."""
+        with pytest.raises(FileNotFoundError, match="Certificate file not found"):
+            manager.import_identity_from_custom_files(
+                name="Should Fail",
+                cert_path=temp_source_dir / "nonexistent.pem",
+                key_path=temp_source_dir / "key.key",
+            )
+
+    def test_import_key_file_not_found(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test error when key file doesn't exist."""
+        cert_pem, _ = cert_and_key
+        cert_path = temp_source_dir / "cert.pem"
+        cert_path.write_bytes(cert_pem)
+
+        with pytest.raises(FileNotFoundError, match="Key file not found"):
+            manager.import_identity_from_custom_files(
+                name="Should Fail",
+                cert_path=cert_path,
+                key_path=temp_source_dir / "nonexistent.key",
+            )
+
+    def test_import_duplicate_fingerprint(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test error when certificate already exists."""
+        cert_pem, key_pem = cert_and_key
+        cert_path = temp_source_dir / "cert.pem"
+        key_path = temp_source_dir / "key.key"
+        cert_path.write_bytes(cert_pem)
+        key_path.write_bytes(key_pem)
+
+        # Import first time
+        manager.import_identity_from_custom_files(
+            name="First Import",
+            cert_path=cert_path,
+            key_path=key_path,
+        )
+
+        # Try to import again
+        with pytest.raises(ValueError, match="already exists"):
+            manager.import_identity_from_custom_files(
+                name="Second Import",
+                cert_path=cert_path,
+                key_path=key_path,
+            )
+
+    def test_import_sets_key_permissions(
+        self,
+        manager: IdentityManager,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test that imported key has restrictive permissions."""
+        cert_pem, key_pem = cert_and_key
+        cert_path = temp_source_dir / "cert.pem"
+        key_path = temp_source_dir / "key.key"
+        cert_path.write_bytes(cert_pem)
+        key_path.write_bytes(key_pem)
+
+        identity = manager.import_identity_from_custom_files(
+            name="Secure Import",
+            cert_path=cert_path,
+            key_path=key_path,
+        )
+
+        mode = identity.key_path.stat().st_mode & 0o777
+        assert mode == 0o600
+
+    def test_import_persists(
+        self,
+        temp_config_dir: Path,
+        temp_source_dir: Path,
+        cert_and_key: tuple,
+    ) -> None:
+        """Test that imported identities persist across manager instances."""
+        cert_pem, key_pem = cert_and_key
+        cert_path = temp_source_dir / "cert.pem"
+        key_path = temp_source_dir / "key.key"
+        cert_path.write_bytes(cert_pem)
+        key_path.write_bytes(key_pem)
+
+        # Import with first manager
+        manager1 = IdentityManager(config_dir=temp_config_dir)
+        identity = manager1.import_identity_from_custom_files(
+            name="Persistent Cert",
+            cert_path=cert_path,
+            key_path=key_path,
+        )
+        identity_id = identity.id
+
+        # Load with second manager
+        manager2 = IdentityManager(config_dir=temp_config_dir)
+        loaded = manager2.get_identity(identity_id)
+
+        assert loaded is not None
+        assert loaded.name == "Persistent Cert"

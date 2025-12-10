@@ -193,6 +193,11 @@ class CertificatesSettings(Static):
                 id="create-identity-btn",
             )
             yield Button(
+                "Import Certificate",
+                variant="default",
+                id="import-custom-btn",
+            )
+            yield Button(
                 "Import from Lagrange",
                 variant="default",
                 id="import-lagrange-btn",
@@ -239,6 +244,9 @@ class CertificatesSettings(Static):
         if event.button.id == "create-identity-btn":
             self._show_create_modal()
             event.stop()
+        elif event.button.id == "import-custom-btn":
+            self._show_import_custom_modal()
+            event.stop()
         elif event.button.id == "import-lagrange-btn":
             self._show_import_modal()
             event.stop()
@@ -255,6 +263,21 @@ class CertificatesSettings(Static):
 
     async def _on_identity_created(self, identity: Identity | None) -> None:
         """Handle identity creation result."""
+        if identity is not None:
+            await self.refresh_list()
+
+    def _show_import_custom_modal(self) -> None:
+        """Show the import custom certificate modal."""
+        from astronomo.widgets.certificates import ImportCustomModal
+
+        app: Astronomo = self.app  # type: ignore[assignment]
+        app.push_screen(
+            ImportCustomModal(self.identity_manager),
+            callback=self._on_custom_import_complete,
+        )
+
+    async def _on_custom_import_complete(self, identity: Identity | None) -> None:
+        """Handle custom import completion."""
         if identity is not None:
             await self.refresh_list()
 

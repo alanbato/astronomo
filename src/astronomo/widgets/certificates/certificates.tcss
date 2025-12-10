@@ -310,3 +310,143 @@ ImportLagrangeModal .button-row {
 ImportLagrangeModal .button-row Button {
     margin-left: 1;
 }
+
+/* Import Custom Certificate Modal */
+ImportCustomModal {
+    align: center middle;
+}
+
+ImportCustomModal > Container {
+    width: 70;
+    height: auto;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+ImportCustomModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+ImportCustomModal .field-label {
+    padding: 1 0 0 0;
+}
+
+ImportCustomModal .path-input-row {
+    width: 100%;
+    height: auto;
+}
+
+ImportCustomModal .path-input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+ImportCustomModal Checkbox {
+    height: auto;
+    padding: 0;
+    margin: 1 0;
+}
+
+ImportCustomModal #key-section {
+    width: 100%;
+    height: auto;
+}
+
+ImportCustomModal #key-section.hidden {
+    display: none;
+}
+
+ImportCustomModal .error-text {
+    color: $error;
+    padding: 1 0;
+    min-height: 1;
+}
+
+ImportCustomModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}
+
+ImportCustomModal .button-row Button {
+    margin-left: 1;
+}
+
+/* File Picker Modal */
+FilePickerModal {
+    align: center middle;
+}
+
+FilePickerModal > Container {
+    width: 70;
+    height: 80%;
+    border: thick $primary;
+    background: $surface;
+    padding: 1 2;
+}
+
+FilePickerModal .modal-title {
+    text-style: bold;
+    width: 100%;
+    content-align: center middle;
+    padding-bottom: 1;
+}
+
+FilePickerModal .field-label {
+    padding: 0;
+}
+
+FilePickerModal .path-input-row {
+    width: 100%;
+    height: auto;
+    margin-bottom: 1;
+}
+
+FilePickerModal .path-input-row #path-input {
+    width: 1fr;
+}
+
+FilePickerModal .path-input-row #parent-dir-btn {
+    width: auto;
+    min-width: 5;
+    margin-left: 1;
+}
+
+FilePickerModal #file-tree {
+    width: 100%;
+    height: 1fr;
+    border: solid $primary;
+    margin: 1 0;
+}
+
+FilePickerModal .file-picker-options {
+    width: 100%;
+    height: auto;
+    padding: 0;
+}
+
+FilePickerModal .file-picker-options Checkbox {
+    height: auto;
+    padding: 0;
+}
+
+FilePickerModal .selected-file {
+    padding: 1 0;
+    text-style: bold;
+}
+
+FilePickerModal .button-row {
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}
+
+FilePickerModal .button-row Button {
+    margin-left: 1;
+}
