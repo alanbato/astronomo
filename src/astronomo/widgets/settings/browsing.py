@@ -33,6 +33,18 @@ BROWSING_SETTINGS = [
         description="Maximum number of redirects to follow automatically",
         default=5,
     ),
+    SettingDefinition(
+        key="browsing.identity_prompt",
+        label="Identity Prompt",
+        widget_type=WidgetType.SELECT,
+        description="When to show identity selection for sites with configured identities",
+        options=[
+            ("Every time", "every_time"),
+            ("When ambiguous", "when_ambiguous"),
+            ("Remember choice", "remember_choice"),
+        ],
+        default="when_ambiguous",
+    ),
 ]
 
 

@@ -250,6 +250,266 @@ class TestGetPageTitle:
             assert title is None
 
 
+class TestSessionChoicePersistence:
+    """Tests for session identity choice persistence."""
+
+    @pytest.mark.asyncio
+    async def test_save_and_load_session_choice(self, mock_gemini_client, tmp_path):
+        """Test that session choices are persisted and loaded correctly."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+identity_prompt = "remember_choice"
+"""
+        )
+
+        # Create a mock identity
+        from astronomo.identities import Identity
+        from datetime import datetime
+
+        mock_identity = Identity(
+            id="test-id-123",
+            name="Test Identity",
+            fingerprint="SHA256:abc123",
+            cert_path=tmp_path / "test.pem",
+            key_path=tmp_path / "test.key",
+            url_prefixes=["gemini://example.com/"],
+            created_at=datetime.now(),
+        )
+
+        app = Astronomo(config_path=config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            # Manually save a session choice
+            prefix = "gemini://example.com/"
+            app._session_identity_choices[prefix] = mock_identity
+            app._save_session_choice(prefix, mock_identity)
+
+            # Verify the file was created
+            session_file = app._session_choices_path
+            assert session_file.exists()
+
+            # Verify the content
+            import tomllib
+
+            with open(session_file, "rb") as f:
+                data = tomllib.load(f)
+            assert data["choices"][prefix] == "test-id-123"
+
+    @pytest.mark.asyncio
+    async def test_save_anonymous_choice(self, mock_gemini_client, tmp_path):
+        """Test that anonymous choice is persisted correctly."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+"""
+        )
+
+        app = Astronomo(config_path=config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            # Save anonymous choice
+            prefix = "gemini://example.com/"
+            app._session_identity_choices[prefix] = None
+            app._save_session_choice(prefix, None)
+
+            # Verify the content
+            import tomllib
+
+            with open(app._session_choices_path, "rb") as f:
+                data = tomllib.load(f)
+            assert data["choices"][prefix] == "anonymous"
+
+    @pytest.mark.asyncio
+    async def test_load_session_choices_on_startup(self, mock_gemini_client, tmp_path):
+        """Test that session choices are loaded on app startup."""
+        import tomli_w
+
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            """\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+"""
+        )
+
+        # Create identity files
+        certs_dir = tmp_path / "certificates"
+        certs_dir.mkdir()
+        cert_path = certs_dir / "test-id.pem"
+        key_path = certs_dir / "test-id.key"
+        cert_path.write_text("CERT")
+        key_path.write_text("KEY")
+
+        # Create identity in identities.toml
+        identities_file = tmp_path / "identities.toml"
+        identity_data = {
+            "version": "1.0",
+            "identities": [
+                {
+                    "id": "test-id",
+                    "name": "Test",
+                    "hostname": "example.com",
+                    "created_at": "2025-01-01T00:00:00",
+                    "url_prefixes": [],
+                    "cert_path": str(cert_path),
+                    "key_path": str(key_path),
+                }
+            ],
+        }
+        with open(identities_file, "wb") as f:
+            tomli_w.dump(identity_data, f)
+
+        # Pre-create session choices file
+        session_file = tmp_path / "session_choices.toml"
+        with open(session_file, "wb") as f:
+            tomli_w.dump(
+                {
+                    "choices": {
+                        "gemini://example.com/": "test-id",
+                        "gemini://other.com/": "anonymous",
+                    }
+                },
+                f,
+            )
+
+        # Patch IdentityManager to use our temp dir
+        from unittest.mock import patch
+
+        with patch("astronomo.astronomo_app.IdentityManager") as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_identity = MagicMock()
+            mock_identity.id = "test-id"
+            mock_manager.get_identity.return_value = mock_identity
+            mock_manager.is_identity_valid.return_value = True
+            mock_manager_class.return_value = mock_manager
+
+            app = Astronomo(config_path=config_path)
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                # Verify choices were loaded
+                assert "gemini://example.com/" in app._session_identity_choices
+                assert "gemini://other.com/" in app._session_identity_choices
+                assert (
+                    app._session_identity_choices["gemini://other.com/"] is None
+                )  # anonymous
+
+
+class TestIdentityPromptBehavior:
+    """Tests for identity_prompt setting behavior."""
+
+    @pytest.mark.asyncio
+    async def test_get_session_prefix_for_url(self, mock_gemini_client, tmp_path):
+        """Test URL prefix extraction."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
+
+        app = Astronomo(config_path=config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            # Test various URLs
+            assert (
+                app._get_session_prefix_for_url("gemini://example.com/")
+                == "gemini://example.com/"
+            )
+            assert (
+                app._get_session_prefix_for_url("gemini://example.com/path/to/page")
+                == "gemini://example.com/"
+            )
+            assert (
+                app._get_session_prefix_for_url("gemini://sub.example.com:1965/page")
+                == "gemini://sub.example.com:1965/"
+            )
+
+    @pytest.mark.asyncio
+    async def test_get_session_identity_choice_not_prompted(
+        self, mock_gemini_client, tmp_path
+    ):
+        """Test that _NOT_YET_PROMPTED is returned for unknown URLs."""
+        from astronomo.astronomo_app import _NOT_YET_PROMPTED
+
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
+
+        app = Astronomo(config_path=config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            choice = app._get_session_identity_choice("gemini://unknown.com/")
+            assert choice is _NOT_YET_PROMPTED
+
+    @pytest.mark.asyncio
+    async def test_get_session_identity_choice_anonymous(
+        self, mock_gemini_client, tmp_path
+    ):
+        """Test that None is returned for anonymous choices."""
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
+
+        app = Astronomo(config_path=config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            # Set anonymous choice
+            app._session_identity_choices["gemini://example.com/"] = None
+
+            choice = app._get_session_identity_choice("gemini://example.com/page")
+            assert choice is None
+
+    @pytest.mark.asyncio
+    async def test_get_session_identity_choice_with_identity(
+        self, mock_gemini_client, tmp_path
+    ):
+        """Test that identity is returned when previously selected."""
+        from unittest.mock import patch
+
+        config_path = tmp_path / "config.toml"
+        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
+
+        mock_identity = MagicMock()
+        mock_identity.id = "test-id"
+
+        with patch("astronomo.astronomo_app.IdentityManager") as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager.is_identity_valid.return_value = True
+            mock_manager_class.return_value = mock_manager
+
+            app = Astronomo(config_path=config_path)
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                # Set identity choice
+                app._session_identity_choices["gemini://example.com/"] = mock_identity
+
+                choice = app._get_session_identity_choice("gemini://example.com/page")
+                assert choice is mock_identity
+
+
 class TestSaveSnapshot:
     """Tests for the snapshot save functionality."""
 

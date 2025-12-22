@@ -100,6 +100,7 @@ class TestBrowsingConfig:
         assert data == {
             "timeout": 30,
             "max_redirects": 5,
+            "identity_prompt": "when_ambiguous",
         }
         assert "home_page" not in data  # Should not include None values
 
@@ -115,6 +116,7 @@ class TestBrowsingConfig:
             "home_page": "gemini://example.com/",
             "timeout": 60,
             "max_redirects": 10,
+            "identity_prompt": "when_ambiguous",
         }
 
     def test_from_dict_valid_values(self) -> None:
@@ -171,6 +173,23 @@ class TestBrowsingConfig:
         assert config.home_page is None  # No default homepage
         assert config.timeout == 30
         assert config.max_redirects == 5
+        assert config.identity_prompt == "when_ambiguous"
+
+    def test_from_dict_valid_identity_prompt(self) -> None:
+        """Test that valid identity_prompt values are accepted."""
+        for value in ["every_time", "when_ambiguous", "remember_choice"]:
+            config = BrowsingConfig.from_dict({"identity_prompt": value})
+            assert config.identity_prompt == value
+
+    def test_from_dict_invalid_identity_prompt_falls_back(self) -> None:
+        """Test that invalid identity_prompt falls back to default."""
+        config = BrowsingConfig.from_dict({"identity_prompt": "invalid_value"})
+        assert config.identity_prompt == "when_ambiguous"
+
+    def test_from_dict_wrong_type_identity_prompt_falls_back(self) -> None:
+        """Test that wrong type identity_prompt falls back to default."""
+        config = BrowsingConfig.from_dict({"identity_prompt": 123})
+        assert config.identity_prompt == "when_ambiguous"
 
 
 class TestSnapshotsConfig:

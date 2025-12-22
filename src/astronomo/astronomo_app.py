@@ -1,6 +1,8 @@
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import (
     quote,
     urljoin,
@@ -9,6 +11,13 @@ from urllib.parse import (
     uses_netloc,
     uses_relative,
 )
+
+import tomli_w
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from nauyaca.client import GeminiClient
 from textual import work
@@ -99,9 +108,13 @@ class Astronomo(App[None]):
         self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url
-        # Session-scoped identity choices (not persisted to disk)
+        # Session identity choices (persisted to disk with remember_choice mode)
         # Key: URL prefix, Value: Identity or None (anonymous)
         self._session_identity_choices: dict[str, Identity | None] = {}
+        self._session_choices_path = (
+            self.config_manager.config_dir / "session_choices.toml"
+        )
+        self._load_session_choices()
 
     def compose(self) -> ComposeResult:
         """Compose the main browsing UI."""
@@ -196,14 +209,38 @@ class Astronomo(App[None]):
                 # Check if any identities match this URL
                 matching = self.identities.get_all_identities_for_url(url)
                 if matching:
-                    # Show modal and return (modal callback will re-call get_url)
-                    self.call_later(
-                        self._handle_session_identity_prompt,
-                        url,
-                        matching,
-                        add_to_history,
-                    )
-                    return
+                    prompt_behavior = self.config_manager.identity_prompt
+
+                    if prompt_behavior == "remember_choice":
+                        # Never prompt - proceed without identity
+                        # (User must explicitly select via status 60 or settings)
+                        pass
+                    elif prompt_behavior == "when_ambiguous":
+                        if len(matching) == 1:
+                            # Auto-select the only matching identity
+                            identity = matching[0]
+                            # Store in session memory for consistency
+                            prefix = self._get_session_prefix_for_url(url)
+                            self._session_identity_choices[prefix] = identity
+                            self._save_session_choice(prefix, identity)
+                        else:
+                            # Multiple matches - show modal
+                            self.call_later(
+                                self._handle_session_identity_prompt,
+                                url,
+                                matching,
+                                add_to_history,
+                            )
+                            return
+                    else:  # "every_time"
+                        # Always show modal
+                        self.call_later(
+                            self._handle_session_identity_prompt,
+                            url,
+                            matching,
+                            add_to_history,
+                        )
+                        return
             elif isinstance(choice, Identity):
                 # User previously chose an identity for this session
                 identity = choice
@@ -404,6 +441,7 @@ class Astronomo(App[None]):
                 # Also update session choice so subsequent requests use this identity
                 session_prefix = self._get_session_prefix_for_url(url)
                 self._session_identity_choices[session_prefix] = result.identity
+                self._save_session_choice(session_prefix, result.identity)
 
                 # Retry with the selected identity
                 self.get_url(url, identity=result.identity, skip_session_prompt=True)
@@ -436,6 +474,7 @@ class Astronomo(App[None]):
                 # Update session choice
                 session_prefix = self._get_session_prefix_for_url(url)
                 self._session_identity_choices[session_prefix] = result.identity
+                self._save_session_choice(session_prefix, result.identity)
                 # Retry with the new identity
                 self.get_url(url, identity=result.identity, skip_session_prompt=True)
 
@@ -469,12 +508,14 @@ class Astronomo(App[None]):
                 # Update session choice
                 session_prefix = self._get_session_prefix_for_url(url)
                 self._session_identity_choices[session_prefix] = result.identity
+                self._save_session_choice(session_prefix, result.identity)
                 # Retry with the regenerated identity
                 self.get_url(url, identity=result.identity, skip_session_prompt=True)
             elif result.action == "switch" and result.identity is not None:
                 # Update session choice
                 session_prefix = self._get_session_prefix_for_url(url)
                 self._session_identity_choices[session_prefix] = result.identity
+                self._save_session_choice(session_prefix, result.identity)
                 # Retry with the new identity
                 self.get_url(url, identity=result.identity, skip_session_prompt=True)
 
@@ -500,6 +541,57 @@ class Astronomo(App[None]):
         """
         parsed = urlparse(url)
         return f"{parsed.scheme}://{parsed.netloc}/"
+
+    def _load_session_choices(self) -> None:
+        """Load persisted session identity choices from disk."""
+        if not self._session_choices_path.exists():
+            return
+
+        try:
+            with open(self._session_choices_path, "rb") as f:
+                data = tomllib.load(f)
+
+            choices = data.get("choices", {})
+            for prefix, identity_id in choices.items():
+                if identity_id == "anonymous":
+                    self._session_identity_choices[prefix] = None
+                else:
+                    # Look up the identity by ID
+                    identity = self.identities.get_identity(identity_id)
+                    if identity and self.identities.is_identity_valid(identity.id):
+                        self._session_identity_choices[prefix] = identity
+                    # If identity not found or invalid, skip it (will re-prompt)
+        except (tomllib.TOMLDecodeError, OSError):
+            # If file is corrupted, start fresh
+            pass
+
+    def _save_session_choice(self, prefix: str, identity: Identity | None) -> None:
+        """Save a session identity choice to disk.
+
+        Args:
+            prefix: The URL prefix (e.g., "gemini://example.com/")
+            identity: The chosen identity, or None for anonymous
+        """
+        # Load existing choices
+        choices: dict[str, Any] = {}
+        if self._session_choices_path.exists():
+            try:
+                with open(self._session_choices_path, "rb") as f:
+                    data = tomllib.load(f)
+                choices = data.get("choices", {})
+            except (tomllib.TOMLDecodeError, OSError):
+                pass
+
+        # Update with the new choice
+        if identity is None:
+            choices[prefix] = "anonymous"
+        else:
+            choices[prefix] = identity.id
+
+        # Write back
+        self.config_manager.config_dir.mkdir(parents=True, exist_ok=True)
+        with open(self._session_choices_path, "wb") as f:
+            tomli_w.dump({"choices": choices}, f)
 
     def _get_session_identity_choice(self, url: str) -> Identity | None | object:
         """Get the session's identity choice for a URL.
@@ -551,6 +643,7 @@ class Astronomo(App[None]):
             # Store the session choice
             prefix = self._get_session_prefix_for_url(url)
             self._session_identity_choices[prefix] = result.identity
+            self._save_session_choice(prefix, result.identity)
 
             # Re-fetch with the chosen identity (or None for anonymous)
             self.get_url(

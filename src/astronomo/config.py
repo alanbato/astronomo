@@ -34,6 +34,15 @@ VALID_THEMES = frozenset(
     }
 )
 
+# Valid identity prompt behaviors
+VALID_IDENTITY_PROMPTS = frozenset(
+    {
+        "every_time",
+        "when_ambiguous",
+        "remember_choice",
+    }
+)
+
 # Default config template with comments (used for first-run creation)
 DEFAULT_CONFIG_TEMPLATE = """\
 # Astronomo Configuration
@@ -64,6 +73,13 @@ timeout = 30
 
 # Maximum number of redirects to follow
 max_redirects = 5
+
+# When to show identity selection prompt for sites with configured identities
+# Options:
+#   every_time     - Always show the identity selection modal
+#   when_ambiguous - Only prompt when multiple identities match; auto-select if one
+#   remember_choice - Reuse previous choice without prompting (persisted to disk)
+identity_prompt = "when_ambiguous"
 
 [snapshots]
 # Directory where page snapshots are saved (Ctrl+S)
@@ -129,17 +145,20 @@ class BrowsingConfig:
         home_page: Default home page URL (None if not set)
         timeout: Request timeout in seconds
         max_redirects: Maximum number of redirects to follow
+        identity_prompt: When to show identity selection modal
     """
 
     home_page: str | None = None
     timeout: int = 30
     max_redirects: int = 5
+    identity_prompt: str = "when_ambiguous"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
         data: dict[str, Any] = {
             "timeout": self.timeout,
             "max_redirects": self.max_redirects,
+            "identity_prompt": self.identity_prompt,
         }
         if self.home_page is not None:
             data["home_page"] = self.home_page
@@ -163,10 +182,18 @@ class BrowsingConfig:
         if not isinstance(max_redirects, int) or max_redirects < 0:
             max_redirects = defaults.max_redirects
 
+        identity_prompt = data.get("identity_prompt", defaults.identity_prompt)
+        if (
+            not isinstance(identity_prompt, str)
+            or identity_prompt not in VALID_IDENTITY_PROMPTS
+        ):
+            identity_prompt = defaults.identity_prompt
+
         return cls(
             home_page=home_page,
             timeout=timeout,
             max_redirects=max_redirects,
+            identity_prompt=identity_prompt,
         )
 
 
@@ -343,3 +370,8 @@ class ConfigManager:
     def show_emoji(self) -> bool:
         """Get whether emoji should be displayed as-is."""
         return self.config.appearance.show_emoji
+
+    @property
+    def identity_prompt(self) -> str:
+        """Get the configured identity prompt behavior."""
+        return self.config.browsing.identity_prompt
