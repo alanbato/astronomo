@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING
 
 from rich.text import Text
-from textual.containers import VerticalScroll
+from textual.containers import Center, VerticalScroll
 from textual.content import Content
 from textual.message import Message
 from textual.reactive import reactive
@@ -148,6 +148,11 @@ class GemtextPreformattedWidget(GemtextLineWidget):
         color: $text-muted;
     }
     """
+
+    def __init__(self, line: GemtextLine, **kwargs) -> None:
+        super().__init__(line, **kwargs)
+        # Preformatted blocks should not be width-constrained
+        self.add_class("-full-width")
 
     def render(self) -> Text | Content:
         content = self.line.content
@@ -313,17 +318,34 @@ class GemtextViewer(VerticalScroll):
         if self.lines:
             self.update_content(self.lines)
 
+    def apply_width_constraint(self) -> None:
+        """Apply max content width from config by re-rendering content.
+
+        This is called when the setting changes to apply the new width.
+        """
+        if self.lines:
+            self.update_content(self.lines)
+
     def update_content(self, lines: list[GemtextLine]) -> None:
         """Update the displayed content with parsed Gemtext lines."""
         self.lines = lines
 
-        # Remove old content widgets
-        for widget in self.query(GemtextLineWidget):
-            widget.remove()
+        # Remove old content (including Center wrappers)
+        for widget in list(self.children):
+            if isinstance(widget, (GemtextLineWidget, Center)):
+                widget.remove()
+
+        # Get max width setting
+        max_width = 0
+        try:
+            app: Astronomo = self.app  # type: ignore[assignment]
+            max_width = app.config_manager.max_content_width
+        except AttributeError:
+            pass
 
         # Build new widgets
         self._link_widgets = []
-        widgets: list[GemtextLineWidget] = []
+        to_mount: list[GemtextLineWidget | Center] = []
         link_idx = 0
 
         for line in lines:
@@ -334,10 +356,21 @@ class GemtextViewer(VerticalScroll):
                 link_idx += 1
             else:
                 widget = create_line_widget(line)
-            widgets.append(widget)
+
+            # Apply width constraint and centering
+            if widget.has_class("-full-width") or max_width == 0:
+                # Full width - no centering needed
+                to_mount.append(widget)
+            else:
+                # Wrap in Center container for horizontal centering
+                widget.styles.width = max_width
+                centered = Center(widget)
+                centered.styles.width = "100%"
+                centered.styles.height = "auto"
+                to_mount.append(centered)
 
         # Mount all widgets
-        self.mount(*widgets)
+        self.mount(*to_mount)
 
         # Scroll to top for new content
         self.scroll_to(y=0, animate=False)

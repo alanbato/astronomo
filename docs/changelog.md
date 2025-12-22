@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Identity prompt behavior setting: control when the identity selection modal appears via Settings > Browsing. Options are "Every time" (always prompt), "When ambiguous" (auto-select if one match, prompt if multiple), and "Remember choice" (never prompt, reuse previous selection). Session identity choices are now persisted to disk and restored on app restart
 - Emoji display mode setting: toggle between showing Unicode emoji or text descriptions (e.g., `(grinning face)`) in Settings > Appearance
+- Max content width setting: limit text content to a configurable width (default 80 characters) with automatic centering. Preformatted blocks and code are excluded from the limit. Set to 0 to disable
 - Settings button (cog icon) in the navigation bar for quick access to settings
 - Folder color customization: set custom background colors for bookmark folders via the Edit Folder dialog
 - Color picker with 12 preset colors (6 muted, 6 pastel) and custom hex input support

@@ -63,6 +63,10 @@ syntax_highlighting = true
 # Show emoji characters (off displays text descriptions like [smile])
 show_emoji = true
 
+# Maximum width for text content in characters (0 to disable, minimum 40)
+# Preformatted blocks and code are always shown at full width
+max_content_width = 80
+
 [browsing]
 # Default home page when launching without a URL argument
 # Uncomment and set to your preferred start page:
@@ -97,11 +101,13 @@ class AppearanceConfig:
         theme: Textual theme name (e.g., "textual-dark", "nord", "gruvbox")
         syntax_highlighting: Enable syntax highlighting in preformatted blocks
         show_emoji: Display emoji characters (False shows text descriptions)
+        max_content_width: Maximum width for text content (0 to disable, minimum 40)
     """
 
     theme: str = "textual-dark"
     syntax_highlighting: bool = True
     show_emoji: bool = True
+    max_content_width: int = 80
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
@@ -109,6 +115,7 @@ class AppearanceConfig:
             "theme": self.theme,
             "syntax_highlighting": self.syntax_highlighting,
             "show_emoji": self.show_emoji,
+            "max_content_width": self.max_content_width,
         }
 
     @classmethod
@@ -130,10 +137,19 @@ class AppearanceConfig:
         if not isinstance(show_emoji, bool):
             show_emoji = defaults.show_emoji
 
+        max_content_width = data.get("max_content_width", defaults.max_content_width)
+        if (
+            not isinstance(max_content_width, int)
+            or max_content_width < 0
+            or (max_content_width > 0 and max_content_width < 40)
+        ):
+            max_content_width = defaults.max_content_width
+
         return cls(
             theme=theme,
             syntax_highlighting=syntax_highlighting,
             show_emoji=show_emoji,
+            max_content_width=max_content_width,
         )
 
 
@@ -375,3 +391,8 @@ class ConfigManager:
     def identity_prompt(self) -> str:
         """Get the configured identity prompt behavior."""
         return self.config.browsing.identity_prompt
+
+    @property
+    def max_content_width(self) -> int:
+        """Get the configured max content width (0 means disabled)."""
+        return self.config.appearance.max_content_width

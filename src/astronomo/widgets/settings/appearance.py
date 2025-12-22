@@ -38,6 +38,14 @@ APPEARANCE_SETTINGS = [
         description="Display emoji characters (off shows text descriptions)",
         default=True,
     ),
+    SettingDefinition(
+        key="appearance.max_content_width",
+        label="Max Content Width",
+        widget_type=WidgetType.INPUT_NUMBER,
+        description="Maximum width for text in characters (0 to disable, min 40)",
+        default=80,
+        placeholder="80",
+    ),
 ]
 
 
@@ -89,5 +97,22 @@ class AppearanceSettings(Static):
                 self.config_manager.config.appearance.show_emoji = value
                 self.config_manager.save()
                 # Re-render content to apply the change (no network request)
-                viewer = app.query_one("GemtextViewer", expect_type=GemtextViewer)
-                viewer.rerender_content()
+                try:
+                    viewer = app.query_one("GemtextViewer", expect_type=GemtextViewer)
+                    viewer.rerender_content()
+                except Exception:
+                    pass  # Viewer not available (e.g., in tests)
+            elif parts[1] == "max_content_width":
+                # Validate: must be 0 (disabled) or >= 40
+                if value < 0:
+                    value = 0
+                elif value > 0 and value < 40:
+                    value = 40
+                self.config_manager.config.appearance.max_content_width = value
+                self.config_manager.save()
+                # Apply width constraint immediately
+                try:
+                    viewer = app.query_one("GemtextViewer", expect_type=GemtextViewer)
+                    viewer.apply_width_constraint()
+                except Exception:
+                    pass  # Viewer not available (e.g., in tests)

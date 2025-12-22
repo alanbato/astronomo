@@ -23,6 +23,7 @@ class TestAppearanceConfig:
         assert config.theme == "textual-dark"
         assert config.syntax_highlighting is True
         assert config.show_emoji is True
+        assert config.max_content_width == 80
 
     def test_to_dict(self) -> None:
         """Test converting to dictionary."""
@@ -32,6 +33,7 @@ class TestAppearanceConfig:
             "theme": "nord",
             "syntax_highlighting": True,
             "show_emoji": True,
+            "max_content_width": 80,
         }
 
     def test_to_dict_with_show_emoji_false(self) -> None:
@@ -79,6 +81,36 @@ class TestAppearanceConfig:
         """Test that missing show_emoji uses default."""
         config = AppearanceConfig.from_dict({})
         assert config.show_emoji is True
+
+    def test_from_dict_max_content_width_valid(self) -> None:
+        """Test creating from dictionary with valid max_content_width."""
+        config = AppearanceConfig.from_dict({"max_content_width": 100})
+        assert config.max_content_width == 100
+
+    def test_from_dict_max_content_width_zero(self) -> None:
+        """Test creating from dictionary with max_content_width disabled."""
+        config = AppearanceConfig.from_dict({"max_content_width": 0})
+        assert config.max_content_width == 0
+
+    def test_from_dict_max_content_width_below_minimum_falls_back(self) -> None:
+        """Test that max_content_width below 40 falls back to default."""
+        config = AppearanceConfig.from_dict({"max_content_width": 30})
+        assert config.max_content_width == 80
+
+    def test_from_dict_max_content_width_negative_falls_back(self) -> None:
+        """Test that negative max_content_width falls back to default."""
+        config = AppearanceConfig.from_dict({"max_content_width": -10})
+        assert config.max_content_width == 80
+
+    def test_from_dict_max_content_width_invalid_type_falls_back(self) -> None:
+        """Test that invalid max_content_width type falls back to default."""
+        config = AppearanceConfig.from_dict({"max_content_width": "not-an-int"})
+        assert config.max_content_width == 80
+
+    def test_from_dict_missing_max_content_width(self) -> None:
+        """Test that missing max_content_width uses default."""
+        config = AppearanceConfig.from_dict({})
+        assert config.max_content_width == 80
 
 
 class TestBrowsingConfig:
