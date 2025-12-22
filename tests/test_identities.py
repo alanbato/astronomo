@@ -1,6 +1,5 @@
 """Tests for the identities module."""
 
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -219,31 +218,20 @@ class TestIdentity:
 class TestIdentityManager:
     """Tests for the IdentityManager class."""
 
-    @pytest.fixture
-    def temp_config_dir(self):
-        """Create a temporary directory for test config."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def manager(self, temp_config_dir: Path) -> IdentityManager:
-        """Create an IdentityManager with temporary storage."""
-        return IdentityManager(config_dir=temp_config_dir)
-
-    def test_creates_directories(self, temp_config_dir: Path) -> None:
+    def test_creates_directories(self, tmp_path: Path) -> None:
         """Test that directories are created on first use."""
-        manager = IdentityManager(config_dir=temp_config_dir)
+        manager = IdentityManager(config_dir=tmp_path)
         manager._ensure_dirs()
 
-        assert (temp_config_dir / "certificates").exists()
+        assert (tmp_path / "certificates").exists()
 
-    def test_empty_on_first_run(self, manager: IdentityManager) -> None:
+    def test_empty_on_first_run(self, identity_manager: IdentityManager) -> None:
         """Test that manager starts with no identities."""
-        assert manager.get_all_identities() == []
+        assert identity_manager.get_all_identities() == []
 
-    def test_create_identity(self, manager: IdentityManager) -> None:
+    def test_create_identity(self, identity_manager: IdentityManager) -> None:
         """Test creating a new identity with certificate."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
@@ -252,13 +240,13 @@ class TestIdentityManager:
         assert identity.fingerprint.startswith("sha256:")
         assert identity.cert_path.exists()
         assert identity.key_path.exists()
-        assert identity in manager.get_all_identities()
+        assert identity in identity_manager.get_all_identities()
 
     def test_create_identity_with_custom_validity(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test creating identity with custom validity period."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
             valid_days=730,  # 2 years
@@ -267,9 +255,9 @@ class TestIdentityManager:
         # Certificate should have an expiration date
         assert identity.expires_at is not None
 
-    def test_key_file_permissions(self, manager: IdentityManager) -> None:
+    def test_key_file_permissions(self, identity_manager: IdentityManager) -> None:
         """Test that private key has restrictive permissions."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
@@ -278,173 +266,185 @@ class TestIdentityManager:
         mode = identity.key_path.stat().st_mode & 0o777
         assert mode == 0o600
 
-    def test_remove_identity(self, manager: IdentityManager) -> None:
+    def test_remove_identity(self, identity_manager: IdentityManager) -> None:
         """Test removing an identity."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
         cert_path = identity.cert_path
         key_path = identity.key_path
 
-        result = manager.remove_identity(identity.id)
+        result = identity_manager.remove_identity(identity.id)
 
         assert result is True
-        assert manager.get_identity(identity.id) is None
+        assert identity_manager.get_identity(identity.id) is None
         assert not cert_path.exists()
         assert not key_path.exists()
 
-    def test_remove_identity_not_found(self, manager: IdentityManager) -> None:
+    def test_remove_identity_not_found(self, identity_manager: IdentityManager) -> None:
         """Test removing a non-existent identity."""
-        result = manager.remove_identity("nonexistent-id")
+        result = identity_manager.remove_identity("nonexistent-id")
         assert result is False
 
-    def test_rename_identity(self, manager: IdentityManager) -> None:
+    def test_rename_identity(self, identity_manager: IdentityManager) -> None:
         """Test renaming an identity."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Original Name",
             hostname="example.com",
         )
 
-        result = manager.rename_identity(identity.id, "New Name")
+        result = identity_manager.rename_identity(identity.id, "New Name")
 
         assert result is True
-        updated = manager.get_identity(identity.id)
+        updated = identity_manager.get_identity(identity.id)
         assert updated is not None
         assert updated.name == "New Name"
 
-    def test_rename_identity_not_found(self, manager: IdentityManager) -> None:
+    def test_rename_identity_not_found(self, identity_manager: IdentityManager) -> None:
         """Test renaming a non-existent identity."""
-        result = manager.rename_identity("nonexistent-id", "New Name")
+        result = identity_manager.rename_identity("nonexistent-id", "New Name")
         assert result is False
 
-    def test_get_identity(self, manager: IdentityManager) -> None:
+    def test_get_identity(self, identity_manager: IdentityManager) -> None:
         """Test getting an identity by ID."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
 
-        found = manager.get_identity(identity.id)
+        found = identity_manager.get_identity(identity.id)
         assert found is not None
         assert found.id == identity.id
         assert found.name == identity.name
 
-    def test_get_identity_not_found(self, manager: IdentityManager) -> None:
+    def test_get_identity_not_found(self, identity_manager: IdentityManager) -> None:
         """Test getting a non-existent identity."""
-        found = manager.get_identity("nonexistent-id")
+        found = identity_manager.get_identity("nonexistent-id")
         assert found is None
 
-    def test_add_url_prefix(self, manager: IdentityManager) -> None:
+    def test_add_url_prefix(self, identity_manager: IdentityManager) -> None:
         """Test adding a URL prefix to an identity."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
 
-        result = manager.add_url_prefix(identity.id, "gemini://example.com/")
+        result = identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
 
         assert result is True
         assert "gemini://example.com/" in identity.url_prefixes
 
-    def test_add_url_prefix_not_found(self, manager: IdentityManager) -> None:
+    def test_add_url_prefix_not_found(self, identity_manager: IdentityManager) -> None:
         """Test adding a prefix to a non-existent identity."""
-        result = manager.add_url_prefix("nonexistent-id", "gemini://example.com/")
+        result = identity_manager.add_url_prefix(
+            "nonexistent-id", "gemini://example.com/"
+        )
         assert result is False
 
-    def test_remove_url_prefix(self, manager: IdentityManager) -> None:
+    def test_remove_url_prefix(self, identity_manager: IdentityManager) -> None:
         """Test removing a URL prefix from an identity."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
-        manager.add_url_prefix(identity.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
 
-        result = manager.remove_url_prefix(identity.id, "gemini://example.com/")
+        result = identity_manager.remove_url_prefix(
+            identity.id, "gemini://example.com/"
+        )
 
         assert result is True
         assert "gemini://example.com/" not in identity.url_prefixes
 
-    def test_get_identity_for_url_exact_match(self, manager: IdentityManager) -> None:
+    def test_get_identity_for_url_exact_match(
+        self, identity_manager: IdentityManager
+    ) -> None:
         """Test finding identity for URL with exact prefix."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
-        manager.add_url_prefix(identity.id, "gemini://example.com/app/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/app/")
 
-        found = manager.get_identity_for_url("gemini://example.com/app/page")
+        found = identity_manager.get_identity_for_url("gemini://example.com/app/page")
 
         assert found is not None
         assert found.id == identity.id
 
-    def test_get_identity_for_url_no_match(self, manager: IdentityManager) -> None:
+    def test_get_identity_for_url_no_match(
+        self, identity_manager: IdentityManager
+    ) -> None:
         """Test that non-matching URL returns None."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
-        manager.add_url_prefix(identity.id, "gemini://example.com/app/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/app/")
 
-        found = manager.get_identity_for_url("gemini://other.com/page")
+        found = identity_manager.get_identity_for_url("gemini://other.com/page")
 
         assert found is None
 
     def test_get_identity_for_url_longest_prefix(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test that longest matching prefix wins."""
-        identity1 = manager.create_identity(
+        identity1 = identity_manager.create_identity(
             name="Site-wide",
             hostname="example.com",
         )
-        identity2 = manager.create_identity(
+        identity2 = identity_manager.create_identity(
             name="App-specific",
             hostname="example.com",
         )
 
-        manager.add_url_prefix(identity1.id, "gemini://example.com/")
-        manager.add_url_prefix(identity2.id, "gemini://example.com/app/")
+        identity_manager.add_url_prefix(identity1.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(identity2.id, "gemini://example.com/app/")
 
         # Specific path should match app-specific identity
-        found = manager.get_identity_for_url("gemini://example.com/app/page")
+        found = identity_manager.get_identity_for_url("gemini://example.com/app/page")
         assert found is not None
         assert found.id == identity2.id
 
         # Root path should match site-wide identity
-        found = manager.get_identity_for_url("gemini://example.com/other/page")
+        found = identity_manager.get_identity_for_url("gemini://example.com/other/page")
         assert found is not None
         assert found.id == identity1.id
 
-    def test_is_identity_valid(self, manager: IdentityManager) -> None:
+    def test_is_identity_valid(self, identity_manager: IdentityManager) -> None:
         """Test checking if an identity is valid."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
             valid_days=365,
         )
 
-        assert manager.is_identity_valid(identity.id) is True
+        assert identity_manager.is_identity_valid(identity.id) is True
 
-    def test_is_identity_valid_not_found(self, manager: IdentityManager) -> None:
+    def test_is_identity_valid_not_found(
+        self, identity_manager: IdentityManager
+    ) -> None:
         """Test that non-existent identity is not valid."""
-        assert manager.is_identity_valid("nonexistent-id") is False
+        assert identity_manager.is_identity_valid("nonexistent-id") is False
 
-    def test_is_identity_valid_missing_cert(self, manager: IdentityManager) -> None:
+    def test_is_identity_valid_missing_cert(
+        self, identity_manager: IdentityManager
+    ) -> None:
         """Test that identity with missing cert file is not valid."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
         # Delete the cert file
         identity.cert_path.unlink()
 
-        assert manager.is_identity_valid(identity.id) is False
+        assert identity_manager.is_identity_valid(identity.id) is False
 
-    def test_persistence(self, temp_config_dir: Path) -> None:
+    def test_persistence(self, tmp_path: Path) -> None:
         """Test that identities persist across manager instances."""
         # Create identity with first manager
-        manager1 = IdentityManager(config_dir=temp_config_dir)
+        manager1 = IdentityManager(config_dir=tmp_path)
         identity = manager1.create_identity(
             name="Persistent Identity",
             hostname="example.com",
@@ -452,7 +452,7 @@ class TestIdentityManager:
         manager1.add_url_prefix(identity.id, "gemini://example.com/")
 
         # Load with second manager
-        manager2 = IdentityManager(config_dir=temp_config_dir)
+        manager2 = IdentityManager(config_dir=tmp_path)
 
         assert len(manager2.get_all_identities()) == 1
         loaded = manager2.get_identity(identity.id)
@@ -460,25 +460,25 @@ class TestIdentityManager:
         assert loaded.name == "Persistent Identity"
         assert "gemini://example.com/" in loaded.url_prefixes
 
-    def test_handles_corrupted_file(self, temp_config_dir: Path) -> None:
+    def test_handles_corrupted_file(self, tmp_path: Path) -> None:
         """Test graceful handling of corrupted identities file."""
-        identities_file = temp_config_dir / "identities.toml"
+        identities_file = tmp_path / "identities.toml"
         identities_file.write_text("this is not { valid toml")
 
-        manager = IdentityManager(config_dir=temp_config_dir)
+        manager = IdentityManager(config_dir=tmp_path)
 
         # Should fall back to empty list
         assert manager.get_all_identities() == []
 
-    def test_regenerate_certificate(self, manager: IdentityManager) -> None:
+    def test_regenerate_certificate(self, identity_manager: IdentityManager) -> None:
         """Test regenerating a certificate for an existing identity."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
         old_fingerprint = identity.fingerprint
 
-        result = manager.regenerate_certificate(identity.id, "example.com")
+        result = identity_manager.regenerate_certificate(identity.id, "example.com")
 
         assert result is True
         # Fingerprint should change with new key
@@ -486,44 +486,52 @@ class TestIdentityManager:
         assert identity.cert_path.exists()
         assert identity.key_path.exists()
 
-    def test_regenerate_certificate_not_found(self, manager: IdentityManager) -> None:
+    def test_regenerate_certificate_not_found(
+        self, identity_manager: IdentityManager
+    ) -> None:
         """Test regenerating certificate for non-existent identity."""
-        result = manager.regenerate_certificate("nonexistent-id", "example.com")
+        result = identity_manager.regenerate_certificate(
+            "nonexistent-id", "example.com"
+        )
         assert result is False
 
     def test_get_all_identities_for_url_single_match(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test getting all identities for URL with single match."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
-        manager.add_url_prefix(identity.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
 
-        matches = manager.get_all_identities_for_url("gemini://example.com/page")
+        matches = identity_manager.get_all_identities_for_url(
+            "gemini://example.com/page"
+        )
 
         assert len(matches) == 1
         assert matches[0].id == identity.id
 
     def test_get_all_identities_for_url_multiple_matches(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test getting all identities for URL with multiple matches."""
-        identity1 = manager.create_identity(
+        identity1 = identity_manager.create_identity(
             name="Site-wide",
             hostname="example.com",
         )
-        identity2 = manager.create_identity(
+        identity2 = identity_manager.create_identity(
             name="App-specific",
             hostname="example.com",
         )
 
-        manager.add_url_prefix(identity1.id, "gemini://example.com/")
-        manager.add_url_prefix(identity2.id, "gemini://example.com/app/")
+        identity_manager.add_url_prefix(identity1.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(identity2.id, "gemini://example.com/app/")
 
         # URL under /app/ should match both identities
-        matches = manager.get_all_identities_for_url("gemini://example.com/app/page")
+        matches = identity_manager.get_all_identities_for_url(
+            "gemini://example.com/app/page"
+        )
 
         assert len(matches) == 2
         # Longest prefix first
@@ -531,33 +539,41 @@ class TestIdentityManager:
         assert matches[1].id == identity1.id
 
     def test_get_all_identities_for_url_no_matches(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test getting all identities for URL with no matches."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Test Identity",
             hostname="example.com",
         )
-        manager.add_url_prefix(identity.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
 
-        matches = manager.get_all_identities_for_url("gemini://other.com/page")
+        matches = identity_manager.get_all_identities_for_url("gemini://other.com/page")
 
         assert matches == []
 
     def test_get_all_identities_for_url_sorted_by_prefix_length(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test that results are sorted by prefix length (longest first)."""
-        identity1 = manager.create_identity(name="Short", hostname="example.com")
-        identity2 = manager.create_identity(name="Medium", hostname="example.com")
-        identity3 = manager.create_identity(name="Long", hostname="example.com")
+        identity1 = identity_manager.create_identity(
+            name="Short", hostname="example.com"
+        )
+        identity2 = identity_manager.create_identity(
+            name="Medium", hostname="example.com"
+        )
+        identity3 = identity_manager.create_identity(
+            name="Long", hostname="example.com"
+        )
 
         # Add prefixes in random order
-        manager.add_url_prefix(identity2.id, "gemini://example.com/path/")
-        manager.add_url_prefix(identity1.id, "gemini://example.com/")
-        manager.add_url_prefix(identity3.id, "gemini://example.com/path/to/deep/")
+        identity_manager.add_url_prefix(identity2.id, "gemini://example.com/path/")
+        identity_manager.add_url_prefix(identity1.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(
+            identity3.id, "gemini://example.com/path/to/deep/"
+        )
 
-        matches = manager.get_all_identities_for_url(
+        matches = identity_manager.get_all_identities_for_url(
             "gemini://example.com/path/to/deep/page"
         )
 
@@ -567,17 +583,19 @@ class TestIdentityManager:
         assert matches[2].name == "Short"
 
     def test_get_all_identities_for_url_counts_each_identity_once(
-        self, manager: IdentityManager
+        self, identity_manager: IdentityManager
     ) -> None:
         """Test that each identity is only counted once even with multiple matching prefixes."""
-        identity = manager.create_identity(
+        identity = identity_manager.create_identity(
             name="Multi-prefix",
             hostname="example.com",
         )
-        manager.add_url_prefix(identity.id, "gemini://example.com/")
-        manager.add_url_prefix(identity.id, "gemini://example.com/app/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/app/")
 
-        matches = manager.get_all_identities_for_url("gemini://example.com/app/page")
+        matches = identity_manager.get_all_identities_for_url(
+            "gemini://example.com/app/page"
+        )
 
         # Identity should appear only once
         assert len(matches) == 1
@@ -607,32 +625,15 @@ class TestLagrangeImportResult:
 class TestDiscoverLagrangeIdentities:
     """Tests for discovering Lagrange identity files."""
 
-    @pytest.fixture
-    def temp_lagrange_dir(self):
-        """Create a temporary Lagrange-like idents directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def temp_config_dir(self):
-        """Create a temporary config directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def manager(self, temp_config_dir: Path) -> IdentityManager:
-        """Create IdentityManager with temp storage."""
-        return IdentityManager(config_dir=temp_config_dir)
-
     def test_empty_directory(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test discovery in empty directory."""
-        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+        pairs = identity_manager.discover_lagrange_identities(temp_lagrange_dir)
         assert pairs == []
 
     def test_discovers_valid_pairs(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test discovering valid .crt/.key pairs."""
         # Create a valid certificate pair
@@ -644,7 +645,7 @@ class TestDiscoverLagrangeIdentities:
         (temp_lagrange_dir / "myident.crt").write_bytes(cert_pem)
         (temp_lagrange_dir / "myident.key").write_bytes(key_pem)
 
-        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+        pairs = identity_manager.discover_lagrange_identities(temp_lagrange_dir)
 
         assert len(pairs) == 1
         name, cert_path, key_path = pairs[0]
@@ -653,17 +654,17 @@ class TestDiscoverLagrangeIdentities:
         assert key_path.suffix == ".key"
 
     def test_ignores_orphaned_crt(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test that .crt without matching .key is ignored."""
         cert_pem, _ = generate_self_signed_cert(hostname="test", valid_days=365)
         (temp_lagrange_dir / "orphan.crt").write_bytes(cert_pem)
 
-        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+        pairs = identity_manager.discover_lagrange_identities(temp_lagrange_dir)
         assert pairs == []
 
     def test_discovers_multiple_pairs(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test discovering multiple identity pairs."""
         for name in ["ident1", "ident2", "ident3"]:
@@ -674,7 +675,7 @@ class TestDiscoverLagrangeIdentities:
             (temp_lagrange_dir / f"{name}.crt").write_bytes(cert_pem)
             (temp_lagrange_dir / f"{name}.key").write_bytes(key_pem)
 
-        pairs = manager.discover_lagrange_identities(temp_lagrange_dir)
+        pairs = identity_manager.discover_lagrange_identities(temp_lagrange_dir)
 
         assert len(pairs) == 3
         names = {name for name, _, _ in pairs}
@@ -684,25 +685,8 @@ class TestDiscoverLagrangeIdentities:
 class TestImportFromLagrange:
     """Tests for the full import workflow."""
 
-    @pytest.fixture
-    def temp_config_dir(self):
-        """Create a temporary config directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def temp_lagrange_dir(self):
-        """Create a temporary Lagrange-like idents directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def manager(self, temp_config_dir: Path) -> IdentityManager:
-        """Create IdentityManager with temp storage."""
-        return IdentityManager(config_dir=temp_config_dir)
-
     def test_import_single_identity(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test importing a single identity."""
         cert_pem, key_pem = generate_self_signed_cert(
@@ -712,7 +696,7 @@ class TestImportFromLagrange:
         (temp_lagrange_dir / "testident.crt").write_bytes(cert_pem)
         (temp_lagrange_dir / "testident.key").write_bytes(key_pem)
 
-        result = manager.import_from_lagrange(temp_lagrange_dir)
+        result = identity_manager.import_from_lagrange(temp_lagrange_dir)
 
         assert len(result.imported) == 1
         assert result.imported[0].name == "testident"
@@ -720,7 +704,7 @@ class TestImportFromLagrange:
         assert result.errors == []
 
     def test_skip_duplicate_fingerprint(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test that identities with same fingerprint are skipped."""
         cert_pem, key_pem = generate_self_signed_cert(
@@ -731,18 +715,18 @@ class TestImportFromLagrange:
         (temp_lagrange_dir / "ident1.key").write_bytes(key_pem)
 
         # First import
-        result1 = manager.import_from_lagrange(temp_lagrange_dir)
+        result1 = identity_manager.import_from_lagrange(temp_lagrange_dir)
         assert len(result1.imported) == 1
 
         # Second import with same files
-        result2 = manager.import_from_lagrange(temp_lagrange_dir)
+        result2 = identity_manager.import_from_lagrange(temp_lagrange_dir)
         assert len(result2.imported) == 0
         assert len(result2.skipped_duplicates) == 1
         # Skipped duplicates now show truncated fingerprint, not name
         assert result2.skipped_duplicates[0].startswith("sha256:")
 
     def test_import_sets_permissions(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test that imported key files have 0600 permissions."""
         cert_pem, key_pem = generate_self_signed_cert(
@@ -752,19 +736,19 @@ class TestImportFromLagrange:
         (temp_lagrange_dir / "secureident.crt").write_bytes(cert_pem)
         (temp_lagrange_dir / "secureident.key").write_bytes(key_pem)
 
-        result = manager.import_from_lagrange(temp_lagrange_dir)
+        result = identity_manager.import_from_lagrange(temp_lagrange_dir)
 
         assert len(result.imported) == 1
         mode = result.imported[0].key_path.stat().st_mode & 0o777
         assert mode == 0o600
 
-    def test_directory_not_found(self, manager: IdentityManager) -> None:
+    def test_directory_not_found(self, identity_manager: IdentityManager) -> None:
         """Test FileNotFoundError for missing directory."""
         with pytest.raises(FileNotFoundError):
-            manager.import_from_lagrange(Path("/nonexistent/path"))
+            identity_manager.import_from_lagrange(Path("/nonexistent/path"))
 
     def test_url_prefixes_empty(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test that imported identities have empty URL prefixes."""
         cert_pem, key_pem = generate_self_signed_cert(
@@ -774,12 +758,12 @@ class TestImportFromLagrange:
         (temp_lagrange_dir / "ident.crt").write_bytes(cert_pem)
         (temp_lagrange_dir / "ident.key").write_bytes(key_pem)
 
-        result = manager.import_from_lagrange(temp_lagrange_dir)
+        result = identity_manager.import_from_lagrange(temp_lagrange_dir)
 
         assert result.imported[0].url_prefixes == []
 
     def test_import_multiple_identities(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test importing multiple identities at once."""
         for name in ["alice", "bob", "charlie"]:
@@ -790,14 +774,14 @@ class TestImportFromLagrange:
             (temp_lagrange_dir / f"{name}.crt").write_bytes(cert_pem)
             (temp_lagrange_dir / f"{name}.key").write_bytes(key_pem)
 
-        result = manager.import_from_lagrange(temp_lagrange_dir)
+        result = identity_manager.import_from_lagrange(temp_lagrange_dir)
 
         assert len(result.imported) == 3
         names = {i.name for i in result.imported}
         assert names == {"alice", "bob", "charlie"}
 
     def test_imported_identity_persists(
-        self, temp_config_dir: Path, temp_lagrange_dir: Path
+        self, tmp_path: Path, temp_lagrange_dir: Path
     ) -> None:
         """Test that imported identities persist across manager instances."""
         cert_pem, key_pem = generate_self_signed_cert(
@@ -808,26 +792,30 @@ class TestImportFromLagrange:
         (temp_lagrange_dir / "persistent.key").write_bytes(key_pem)
 
         # Import with first manager
-        manager1 = IdentityManager(config_dir=temp_config_dir)
+        manager1 = IdentityManager(config_dir=tmp_path)
         result = manager1.import_from_lagrange(temp_lagrange_dir)
         imported_id = result.imported[0].id
 
         # Load with second manager
-        manager2 = IdentityManager(config_dir=temp_config_dir)
+        manager2 = IdentityManager(config_dir=tmp_path)
         loaded = manager2.get_identity(imported_id)
 
         assert loaded is not None
         assert loaded.name == "persistent"
 
-    def test_has_identity_with_fingerprint(self, manager: IdentityManager) -> None:
+    def test_has_identity_with_fingerprint(
+        self, identity_manager: IdentityManager
+    ) -> None:
         """Test checking for existing fingerprint."""
-        identity = manager.create_identity(name="Test", hostname="example.com")
+        identity = identity_manager.create_identity(name="Test", hostname="example.com")
 
-        assert manager.has_identity_with_fingerprint(identity.fingerprint) is True
-        assert manager.has_identity_with_fingerprint("nonexistent") is False
+        assert (
+            identity_manager.has_identity_with_fingerprint(identity.fingerprint) is True
+        )
+        assert identity_manager.has_identity_with_fingerprint("nonexistent") is False
 
     def test_import_with_custom_names(
-        self, manager: IdentityManager, temp_lagrange_dir: Path
+        self, identity_manager: IdentityManager, temp_lagrange_dir: Path
     ) -> None:
         """Test importing with custom names provided."""
         cert_pem, key_pem = generate_self_signed_cert(
@@ -840,7 +828,9 @@ class TestImportFromLagrange:
 
         # Import with custom name
         custom_names = {cert_path: "My Custom Identity Name"}
-        result = manager.import_from_lagrange(temp_lagrange_dir, names=custom_names)
+        result = identity_manager.import_from_lagrange(
+            temp_lagrange_dir, names=custom_names
+        )
 
         assert len(result.imported) == 1
         assert result.imported[0].name == "My Custom Identity Name"
@@ -849,81 +839,70 @@ class TestImportFromLagrange:
 class TestPemHelperFunctions:
     """Tests for PEM file helper functions."""
 
-    @pytest.fixture
-    def temp_dir(self):
-        """Create a temporary directory for test files."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def cert_and_key(self):
-        """Generate a certificate and key pair."""
-        return generate_self_signed_cert(hostname="test.example.com", valid_days=365)
-
     def test_pem_file_contains_certificate_true(
-        self, temp_dir: Path, cert_and_key: tuple
+        self, tmp_path: Path, cert_and_key: tuple[bytes, bytes]
     ) -> None:
         """Test detecting certificate in PEM file."""
         cert_pem, _ = cert_and_key
-        cert_path = temp_dir / "cert.pem"
+        cert_path = tmp_path / "cert.pem"
         cert_path.write_bytes(cert_pem)
 
         assert pem_file_contains_certificate(cert_path) is True
 
-    def test_pem_file_contains_certificate_false(self, temp_dir: Path) -> None:
+    def test_pem_file_contains_certificate_false(self, tmp_path: Path) -> None:
         """Test that key-only file returns False."""
         _, key_pem = generate_self_signed_cert(hostname="test", valid_days=365)
-        key_path = temp_dir / "key.pem"
+        key_path = tmp_path / "key.pem"
         key_path.write_bytes(key_pem)
 
         assert pem_file_contains_certificate(key_path) is False
 
     def test_pem_file_contains_key_true(
-        self, temp_dir: Path, cert_and_key: tuple
+        self, tmp_path: Path, cert_and_key: tuple
     ) -> None:
         """Test detecting private key in PEM file."""
         _, key_pem = cert_and_key
-        key_path = temp_dir / "key.pem"
+        key_path = tmp_path / "key.pem"
         key_path.write_bytes(key_pem)
 
         assert pem_file_contains_key(key_path) is True
 
     def test_pem_file_contains_key_false(
-        self, temp_dir: Path, cert_and_key: tuple
+        self, tmp_path: Path, cert_and_key: tuple
     ) -> None:
         """Test that cert-only file returns False."""
         cert_pem, _ = cert_and_key
-        cert_path = temp_dir / "cert.pem"
+        cert_path = tmp_path / "cert.pem"
         cert_path.write_bytes(cert_pem)
 
         assert pem_file_contains_key(cert_path) is False
 
     def test_is_combined_pem_file_true(
-        self, temp_dir: Path, cert_and_key: tuple
+        self, tmp_path: Path, cert_and_key: tuple
     ) -> None:
         """Test detecting combined PEM file."""
         cert_pem, key_pem = cert_and_key
-        combined_path = temp_dir / "combined.pem"
+        combined_path = tmp_path / "combined.pem"
         combined_path.write_bytes(cert_pem + key_pem)
 
         assert is_combined_pem_file(combined_path) is True
 
     def test_is_combined_pem_file_false_cert_only(
-        self, temp_dir: Path, cert_and_key: tuple
+        self, tmp_path: Path, cert_and_key: tuple
     ) -> None:
         """Test that cert-only file is not combined."""
         cert_pem, _ = cert_and_key
-        cert_path = temp_dir / "cert.pem"
+        cert_path = tmp_path / "cert.pem"
         cert_path.write_bytes(cert_pem)
 
         assert is_combined_pem_file(cert_path) is False
 
     def test_is_combined_pem_file_false_key_only(
-        self, temp_dir: Path, cert_and_key: tuple
+        self, tmp_path: Path, cert_and_key: tuple
     ) -> None:
         """Test that key-only file is not combined."""
         _, key_pem = cert_and_key
-        key_path = temp_dir / "key.pem"
+        key_path = tmp_path / "key.pem"
         key_path.write_bytes(key_pem)
 
         assert is_combined_pem_file(key_path) is False
@@ -949,9 +928,9 @@ class TestPemHelperFunctions:
         assert "PRIVATE KEY-----" in extracted
         assert "-----BEGIN CERTIFICATE-----" not in extracted
 
-    def test_pem_file_nonexistent(self, temp_dir: Path) -> None:
+    def test_pem_file_nonexistent(self, tmp_path: Path) -> None:
         """Test handling of nonexistent file."""
-        nonexistent = temp_dir / "nonexistent.pem"
+        nonexistent = tmp_path / "nonexistent.pem"
 
         assert pem_file_contains_certificate(nonexistent) is False
         assert pem_file_contains_key(nonexistent) is False
@@ -961,42 +940,20 @@ class TestPemHelperFunctions:
 class TestImportCustomFiles:
     """Tests for importing custom certificate files."""
 
-    @pytest.fixture
-    def temp_config_dir(self):
-        """Create a temporary config directory."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def temp_source_dir(self):
-        """Create a temporary source directory for cert files."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def manager(self, temp_config_dir: Path) -> IdentityManager:
-        """Create IdentityManager with temp storage."""
-        return IdentityManager(config_dir=temp_config_dir)
-
-    @pytest.fixture
-    def cert_and_key(self):
-        """Generate a certificate and key pair."""
-        return generate_self_signed_cert(hostname="test.example.com", valid_days=365)
-
     def test_import_separate_files(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test importing from separate cert and key files."""
         cert_pem, key_pem = cert_and_key
-        cert_path = temp_source_dir / "my-cert.pem"
-        key_path = temp_source_dir / "my-key.key"
+        cert_path = tmp_path / "my-cert.pem"
+        key_path = tmp_path / "my-key.key"
         cert_path.write_bytes(cert_pem)
         key_path.write_bytes(key_pem)
 
-        identity = manager.import_identity_from_custom_files(
+        identity = identity_manager.import_identity_from_custom_files(
             name="My Custom Cert",
             cert_path=cert_path,
             key_path=key_path,
@@ -1005,20 +962,20 @@ class TestImportCustomFiles:
         assert identity.name == "My Custom Cert"
         assert identity.cert_path.exists()
         assert identity.key_path.exists()
-        assert identity in manager.get_all_identities()
+        assert identity in identity_manager.get_all_identities()
 
     def test_import_combined_pem(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test importing from combined PEM file."""
         cert_pem, key_pem = cert_and_key
-        combined_path = temp_source_dir / "combined.pem"
+        combined_path = tmp_path / "combined.pem"
         combined_path.write_bytes(cert_pem + key_pem)
 
-        identity = manager.import_identity_from_custom_files(
+        identity = identity_manager.import_identity_from_custom_files(
             name="Combined PEM Cert",
             cert_path=combined_path,
             key_path=None,  # Combined mode
@@ -1033,17 +990,17 @@ class TestImportCustomFiles:
 
     def test_import_combined_pem_fails_without_key(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test that combined mode fails if file has no key."""
         cert_pem, _ = cert_and_key
-        cert_only_path = temp_source_dir / "cert-only.pem"
+        cert_only_path = tmp_path / "cert-only.pem"
         cert_only_path.write_bytes(cert_pem)
 
         with pytest.raises(ValueError, match="does not contain both"):
-            manager.import_identity_from_custom_files(
+            identity_manager.import_identity_from_custom_files(
                 name="Should Fail",
                 cert_path=cert_only_path,
                 key_path=None,
@@ -1051,50 +1008,50 @@ class TestImportCustomFiles:
 
     def test_import_cert_file_not_found(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
     ) -> None:
         """Test error when certificate file doesn't exist."""
         with pytest.raises(FileNotFoundError, match="Certificate file not found"):
-            manager.import_identity_from_custom_files(
+            identity_manager.import_identity_from_custom_files(
                 name="Should Fail",
-                cert_path=temp_source_dir / "nonexistent.pem",
-                key_path=temp_source_dir / "key.key",
+                cert_path=tmp_path / "nonexistent.pem",
+                key_path=tmp_path / "key.key",
             )
 
     def test_import_key_file_not_found(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test error when key file doesn't exist."""
         cert_pem, _ = cert_and_key
-        cert_path = temp_source_dir / "cert.pem"
+        cert_path = tmp_path / "cert.pem"
         cert_path.write_bytes(cert_pem)
 
         with pytest.raises(FileNotFoundError, match="Key file not found"):
-            manager.import_identity_from_custom_files(
+            identity_manager.import_identity_from_custom_files(
                 name="Should Fail",
                 cert_path=cert_path,
-                key_path=temp_source_dir / "nonexistent.key",
+                key_path=tmp_path / "nonexistent.key",
             )
 
     def test_import_duplicate_fingerprint(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test error when certificate already exists."""
         cert_pem, key_pem = cert_and_key
-        cert_path = temp_source_dir / "cert.pem"
-        key_path = temp_source_dir / "key.key"
+        cert_path = tmp_path / "cert.pem"
+        key_path = tmp_path / "key.key"
         cert_path.write_bytes(cert_pem)
         key_path.write_bytes(key_pem)
 
         # Import first time
-        manager.import_identity_from_custom_files(
+        identity_manager.import_identity_from_custom_files(
             name="First Import",
             cert_path=cert_path,
             key_path=key_path,
@@ -1102,7 +1059,7 @@ class TestImportCustomFiles:
 
         # Try to import again
         with pytest.raises(ValueError, match="already exists"):
-            manager.import_identity_from_custom_files(
+            identity_manager.import_identity_from_custom_files(
                 name="Second Import",
                 cert_path=cert_path,
                 key_path=key_path,
@@ -1110,18 +1067,18 @@ class TestImportCustomFiles:
 
     def test_import_sets_key_permissions(
         self,
-        manager: IdentityManager,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        identity_manager: IdentityManager,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test that imported key has restrictive permissions."""
         cert_pem, key_pem = cert_and_key
-        cert_path = temp_source_dir / "cert.pem"
-        key_path = temp_source_dir / "key.key"
+        cert_path = tmp_path / "cert.pem"
+        key_path = tmp_path / "key.key"
         cert_path.write_bytes(cert_pem)
         key_path.write_bytes(key_pem)
 
-        identity = manager.import_identity_from_custom_files(
+        identity = identity_manager.import_identity_from_custom_files(
             name="Secure Import",
             cert_path=cert_path,
             key_path=key_path,
@@ -1132,19 +1089,18 @@ class TestImportCustomFiles:
 
     def test_import_persists(
         self,
-        temp_config_dir: Path,
-        temp_source_dir: Path,
-        cert_and_key: tuple,
+        tmp_path: Path,
+        cert_and_key: tuple[bytes, bytes],
     ) -> None:
         """Test that imported identities persist across manager instances."""
         cert_pem, key_pem = cert_and_key
-        cert_path = temp_source_dir / "cert.pem"
-        key_path = temp_source_dir / "key.key"
+        cert_path = tmp_path / "cert.pem"
+        key_path = tmp_path / "key.key"
         cert_path.write_bytes(cert_pem)
         key_path.write_bytes(key_pem)
 
         # Import with first manager
-        manager1 = IdentityManager(config_dir=temp_config_dir)
+        manager1 = IdentityManager(config_dir=tmp_path)
         identity = manager1.import_identity_from_custom_files(
             name="Persistent Cert",
             cert_path=cert_path,
@@ -1153,7 +1109,7 @@ class TestImportCustomFiles:
         identity_id = identity.id
 
         # Load with second manager
-        manager2 = IdentityManager(config_dir=temp_config_dir)
+        manager2 = IdentityManager(config_dir=tmp_path)
         loaded = manager2.get_identity(identity_id)
 
         assert loaded is not None

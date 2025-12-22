@@ -1,29 +1,12 @@
 """Tests for modal widgets (bookmark, edit, etc.)."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 from textual.app import App
 from textual.widgets import Input, Select
 
-from astronomo.bookmarks import BookmarkManager
 from astronomo.widgets.add_bookmark_modal import AddBookmarkModal, NEW_FOLDER_SENTINEL
 from astronomo.widgets.edit_item_modal import EditItemModal
 from astronomo.widgets.save_snapshot_modal import SaveSnapshotModal
-
-
-@pytest.fixture
-def temp_config_dir():
-    """Create a temporary directory for test config."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
-
-
-@pytest.fixture
-def bookmark_manager(temp_config_dir):
-    """Create a BookmarkManager with temporary storage."""
-    return BookmarkManager(config_dir=temp_config_dir)
 
 
 class ModalTestApp(App):

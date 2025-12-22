@@ -4,7 +4,13 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import tomli_w
 from unittest.mock import AsyncMock, MagicMock
+
+from astronomo.bookmarks import BookmarkManager
+from astronomo.config import ConfigManager
+from astronomo.identities import Identity, IdentityManager
+from nauyaca.security.certificates import generate_self_signed_cert
 
 # Sample Gemtext content with multiple links for testing link scrolling
 MOCK_FAQ_CONTENT = """# Gemini FAQ
@@ -129,3 +135,163 @@ max_redirects = 5
 """
         )
         yield config_path
+
+
+# --- Manager Fixtures ---
+
+
+@pytest.fixture
+def config_manager(tmp_path: Path) -> ConfigManager:
+    """Create a ConfigManager with temporary storage."""
+    return ConfigManager(config_path=tmp_path / "config.toml")
+
+
+@pytest.fixture
+def identity_manager(tmp_path: Path) -> IdentityManager:
+    """Create an IdentityManager with temporary storage."""
+    return IdentityManager(config_dir=tmp_path)
+
+
+@pytest.fixture
+def bookmark_manager(tmp_path: Path) -> BookmarkManager:
+    """Create a BookmarkManager with temporary storage."""
+    return BookmarkManager(config_dir=tmp_path)
+
+
+# --- Config File Fixtures ---
+
+
+@pytest.fixture
+def minimal_config_file(tmp_path: Path) -> Path:
+    """Create a minimal config file with default settings.
+
+    Returns the path to config.toml with basic [appearance] and [browsing] sections.
+    """
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        """\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+"""
+    )
+    return config_path
+
+
+@pytest.fixture
+def config_with_identity_prompt(tmp_path: Path) -> Path:
+    """Create a config file with identity_prompt set to 'remember_choice'."""
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        """\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+identity_prompt = "remember_choice"
+"""
+    )
+    return config_path
+
+
+# --- Certificate Fixtures ---
+
+
+@pytest.fixture
+def cert_and_key() -> tuple[bytes, bytes]:
+    """Generate a self-signed certificate and key pair.
+
+    Returns:
+        Tuple of (cert_pem, key_pem) as bytes.
+    """
+    return generate_self_signed_cert(hostname="test.example.com", valid_days=365)
+
+
+@pytest.fixture
+def temp_lagrange_dir(tmp_path: Path) -> Path:
+    """Create an empty Lagrange-style idents directory.
+
+    Tests can add certificate/key files as needed.
+    """
+    lagrange_dir = tmp_path / "lagrange_idents"
+    lagrange_dir.mkdir()
+    return lagrange_dir
+
+
+# --- Identity Fixtures ---
+
+
+@pytest.fixture
+def sample_identity(tmp_path: Path, cert_and_key: tuple[bytes, bytes]) -> Identity:
+    """Create a sample Identity with valid certificate files on disk.
+
+    The certificate and key are written to tmp_path/certificates/.
+    """
+    from datetime import datetime
+
+    cert_pem, key_pem = cert_and_key
+
+    certs_dir = tmp_path / "certificates"
+    certs_dir.mkdir(parents=True, exist_ok=True)
+
+    cert_path = certs_dir / "test-identity.pem"
+    key_path = certs_dir / "test-identity.key"
+
+    cert_path.write_bytes(cert_pem)
+    key_path.write_bytes(key_pem)
+
+    return Identity(
+        id="test-identity-id",
+        name="Test Identity",
+        fingerprint="SHA256:test-fingerprint",
+        cert_path=cert_path,
+        key_path=key_path,
+        url_prefixes=["gemini://example.com/"],
+        created_at=datetime(2025, 1, 1, 0, 0, 0),
+    )
+
+
+@pytest.fixture
+def identity_manager_with_identity(
+    identity_manager: IdentityManager, cert_and_key: tuple[bytes, bytes]
+) -> IdentityManager:
+    """Create an IdentityManager pre-populated with one identity.
+
+    Returns the manager with a test identity already created and saved.
+    """
+    # Create a real identity using the manager's create method
+    identity_manager.create_identity(
+        name="Test Identity",
+        hostname="example.com",
+        valid_days=365,
+    )
+    return identity_manager
+
+
+# --- Session Choices Fixture ---
+
+
+@pytest.fixture
+def session_choices_file(tmp_path: Path) -> Path:
+    """Create a session_choices.toml file with sample data.
+
+    Contains choices for gemini://example.com/ (test-id) and
+    gemini://other.com/ (anonymous).
+    """
+    session_file = tmp_path / "session_choices.toml"
+    with open(session_file, "wb") as f:
+        tomli_w.dump(
+            {
+                "choices": {
+                    "gemini://example.com/": "test-id",
+                    "gemini://other.com/": "anonymous",
+                }
+            },
+            f,
+        )
+    return session_file

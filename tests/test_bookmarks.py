@@ -1,11 +1,8 @@
 """Tests for the bookmarks module."""
 
-import tempfile
-from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
-import pytest
 
 from astronomo.bookmarks import Bookmark, BookmarkManager, Folder
 
@@ -140,38 +137,27 @@ class TestFolder:
 class TestBookmarkManager:
     """Tests for the BookmarkManager class."""
 
-    @pytest.fixture
-    def temp_config_dir(self) -> Iterator[Path]:
-        """Create a temporary directory for test config."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def manager(self, temp_config_dir: Path) -> BookmarkManager:
-        """Create a BookmarkManager with temporary storage."""
-        return BookmarkManager(config_dir=temp_config_dir)
-
-    def test_initialize_empty(self, manager: BookmarkManager) -> None:
+    def test_initialize_empty(self, bookmark_manager: BookmarkManager) -> None:
         """Test manager initializes with empty lists."""
-        assert len(manager.bookmarks) == 0
-        assert len(manager.folders) == 0
+        assert len(bookmark_manager.bookmarks) == 0
+        assert len(bookmark_manager.folders) == 0
 
-    def test_add_bookmark(self, manager: BookmarkManager) -> None:
+    def test_add_bookmark(self, bookmark_manager: BookmarkManager) -> None:
         """Test adding a bookmark."""
-        bookmark = manager.add_bookmark(
+        bookmark = bookmark_manager.add_bookmark(
             url="gemini://example.com/",
             title="Example",
         )
 
         assert bookmark.url == "gemini://example.com/"
         assert bookmark.title == "Example"
-        assert len(manager.bookmarks) == 1
-        assert manager.bookmarks[0] == bookmark
+        assert len(bookmark_manager.bookmarks) == 1
+        assert bookmark_manager.bookmarks[0] == bookmark
 
-    def test_add_bookmark_to_folder(self, manager: BookmarkManager) -> None:
+    def test_add_bookmark_to_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test adding a bookmark to a folder."""
-        folder = manager.add_folder("Favorites")
-        bookmark = manager.add_bookmark(
+        folder = bookmark_manager.add_folder("Favorites")
+        bookmark = bookmark_manager.add_bookmark(
             url="gemini://example.com/",
             title="Example",
             folder_id=folder.id,
@@ -179,215 +165,220 @@ class TestBookmarkManager:
 
         assert bookmark.folder_id == folder.id
 
-    def test_remove_bookmark(self, manager: BookmarkManager) -> None:
+    def test_remove_bookmark(self, bookmark_manager: BookmarkManager) -> None:
         """Test removing a bookmark."""
-        bookmark = manager.add_bookmark("gemini://example.com/", "Example")
-        result = manager.remove_bookmark(bookmark.id)
+        bookmark = bookmark_manager.add_bookmark("gemini://example.com/", "Example")
+        result = bookmark_manager.remove_bookmark(bookmark.id)
 
         assert result is True
-        assert len(manager.bookmarks) == 0
+        assert len(bookmark_manager.bookmarks) == 0
 
-    def test_remove_nonexistent_bookmark(self, manager: BookmarkManager) -> None:
+    def test_remove_nonexistent_bookmark(
+        self, bookmark_manager: BookmarkManager
+    ) -> None:
         """Test removing a bookmark that doesn't exist."""
-        result = manager.remove_bookmark("nonexistent-id")
+        result = bookmark_manager.remove_bookmark("nonexistent-id")
         assert result is False
 
-    def test_update_bookmark_title(self, manager: BookmarkManager) -> None:
+    def test_update_bookmark_title(self, bookmark_manager: BookmarkManager) -> None:
         """Test updating a bookmark's title."""
-        bookmark = manager.add_bookmark("gemini://example.com/", "Old Title")
-        result = manager.update_bookmark(bookmark.id, title="New Title")
+        bookmark = bookmark_manager.add_bookmark("gemini://example.com/", "Old Title")
+        result = bookmark_manager.update_bookmark(bookmark.id, title="New Title")
 
         assert result is True
         assert bookmark.title == "New Title"
 
-    def test_update_bookmark_folder(self, manager: BookmarkManager) -> None:
+    def test_update_bookmark_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test moving a bookmark to a folder."""
-        folder = manager.add_folder("New Folder")
-        bookmark = manager.add_bookmark("gemini://example.com/", "Example")
-        result = manager.update_bookmark(bookmark.id, folder_id=folder.id)
+        folder = bookmark_manager.add_folder("New Folder")
+        bookmark = bookmark_manager.add_bookmark("gemini://example.com/", "Example")
+        result = bookmark_manager.update_bookmark(bookmark.id, folder_id=folder.id)
 
         assert result is True
         assert bookmark.folder_id == folder.id
 
-    def test_update_bookmark_to_root(self, manager: BookmarkManager) -> None:
+    def test_update_bookmark_to_root(self, bookmark_manager: BookmarkManager) -> None:
         """Test moving a bookmark from folder to root."""
-        folder = manager.add_folder("Folder")
-        bookmark = manager.add_bookmark(
+        folder = bookmark_manager.add_folder("Folder")
+        bookmark = bookmark_manager.add_bookmark(
             "gemini://example.com/", "Example", folder_id=folder.id
         )
-        result = manager.update_bookmark(bookmark.id, folder_id=None)
+        result = bookmark_manager.update_bookmark(bookmark.id, folder_id=None)
 
         assert result is True
         assert bookmark.folder_id is None
 
-    def test_get_bookmark(self, manager: BookmarkManager) -> None:
+    def test_get_bookmark(self, bookmark_manager: BookmarkManager) -> None:
         """Test getting a bookmark by ID."""
-        bookmark = manager.add_bookmark("gemini://example.com/", "Example")
-        found = manager.get_bookmark(bookmark.id)
+        bookmark = bookmark_manager.add_bookmark("gemini://example.com/", "Example")
+        found = bookmark_manager.get_bookmark(bookmark.id)
 
         assert found == bookmark
 
-    def test_get_nonexistent_bookmark(self, manager: BookmarkManager) -> None:
+    def test_get_nonexistent_bookmark(self, bookmark_manager: BookmarkManager) -> None:
         """Test getting a bookmark that doesn't exist."""
-        found = manager.get_bookmark("nonexistent")
+        found = bookmark_manager.get_bookmark("nonexistent")
         assert found is None
 
-    def test_get_bookmarks_in_folder(self, manager: BookmarkManager) -> None:
+    def test_get_bookmarks_in_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test getting bookmarks in a specific folder."""
-        folder = manager.add_folder("Test")
-        manager.add_bookmark("gemini://a.com/", "A", folder_id=folder.id)
-        manager.add_bookmark("gemini://b.com/", "B", folder_id=folder.id)
-        manager.add_bookmark("gemini://c.com/", "C")  # Root level
+        folder = bookmark_manager.add_folder("Test")
+        bookmark_manager.add_bookmark("gemini://a.com/", "A", folder_id=folder.id)
+        bookmark_manager.add_bookmark("gemini://b.com/", "B", folder_id=folder.id)
+        bookmark_manager.add_bookmark("gemini://c.com/", "C")  # Root level
 
-        bookmarks = manager.get_bookmarks_in_folder(folder.id)
+        bookmarks = bookmark_manager.get_bookmarks_in_folder(folder.id)
 
         assert len(bookmarks) == 2
         assert all(b.folder_id == folder.id for b in bookmarks)
 
-    def test_get_root_bookmarks(self, manager: BookmarkManager) -> None:
+    def test_get_root_bookmarks(self, bookmark_manager: BookmarkManager) -> None:
         """Test getting root-level bookmarks."""
-        folder = manager.add_folder("Test")
-        manager.add_bookmark("gemini://a.com/", "A", folder_id=folder.id)
-        manager.add_bookmark("gemini://b.com/", "B")  # Root
-        manager.add_bookmark("gemini://c.com/", "C")  # Root
+        folder = bookmark_manager.add_folder("Test")
+        bookmark_manager.add_bookmark("gemini://a.com/", "A", folder_id=folder.id)
+        bookmark_manager.add_bookmark("gemini://b.com/", "B")  # Root
+        bookmark_manager.add_bookmark("gemini://c.com/", "C")  # Root
 
-        bookmarks = manager.get_root_bookmarks()
+        bookmarks = bookmark_manager.get_root_bookmarks()
 
         assert len(bookmarks) == 2
         assert all(b.folder_id is None for b in bookmarks)
 
-    def test_bookmark_exists(self, manager: BookmarkManager) -> None:
+    def test_bookmark_exists(self, bookmark_manager: BookmarkManager) -> None:
         """Test checking if a bookmark exists by URL."""
-        manager.add_bookmark("gemini://example.com/", "Example")
+        bookmark_manager.add_bookmark("gemini://example.com/", "Example")
 
-        assert manager.bookmark_exists("gemini://example.com/") is True
-        assert manager.bookmark_exists("gemini://other.com/") is False
+        assert bookmark_manager.bookmark_exists("gemini://example.com/") is True
+        assert bookmark_manager.bookmark_exists("gemini://other.com/") is False
 
-    def test_add_folder(self, manager: BookmarkManager) -> None:
+    def test_add_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test adding a folder."""
-        folder = manager.add_folder("Favorites")
+        folder = bookmark_manager.add_folder("Favorites")
 
         assert folder.name == "Favorites"
-        assert len(manager.folders) == 1
+        assert len(bookmark_manager.folders) == 1
 
-    def test_remove_folder(self, manager: BookmarkManager) -> None:
+    def test_remove_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test removing a folder."""
-        folder = manager.add_folder("Test")
-        result = manager.remove_folder(folder.id)
+        folder = bookmark_manager.add_folder("Test")
+        result = bookmark_manager.remove_folder(folder.id)
 
         assert result is True
-        assert len(manager.folders) == 0
+        assert len(bookmark_manager.folders) == 0
 
     def test_remove_folder_moves_bookmarks_to_root(
-        self, manager: BookmarkManager
+        self, bookmark_manager: BookmarkManager
     ) -> None:
         """Test that removing a folder moves its bookmarks to root."""
-        folder = manager.add_folder("Test")
-        bookmark = manager.add_bookmark(
+        folder = bookmark_manager.add_folder("Test")
+        bookmark = bookmark_manager.add_bookmark(
             "gemini://example.com/", "Example", folder_id=folder.id
         )
 
-        manager.remove_folder(folder.id)
+        bookmark_manager.remove_folder(folder.id)
 
         assert bookmark.folder_id is None
-        assert len(manager.bookmarks) == 1
+        assert len(bookmark_manager.bookmarks) == 1
 
-    def test_rename_folder(self, manager: BookmarkManager) -> None:
+    def test_rename_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test renaming a folder."""
-        folder = manager.add_folder("Old Name")
-        result = manager.rename_folder(folder.id, "New Name")
+        folder = bookmark_manager.add_folder("Old Name")
+        result = bookmark_manager.rename_folder(folder.id, "New Name")
 
         assert result is True
         assert folder.name == "New Name"
 
-    def test_update_folder_color(self, manager: BookmarkManager) -> None:
+    def test_update_folder_color(self, bookmark_manager: BookmarkManager) -> None:
         """Test setting a folder's color."""
-        folder = manager.add_folder("Test")
-        result = manager.update_folder_color(folder.id, "#4a4a5a")
+        folder = bookmark_manager.add_folder("Test")
+        result = bookmark_manager.update_folder_color(folder.id, "#4a4a5a")
 
         assert result is True
         assert folder.color == "#4a4a5a"
 
-    def test_update_folder_color_to_none(self, manager: BookmarkManager) -> None:
+    def test_update_folder_color_to_none(
+        self, bookmark_manager: BookmarkManager
+    ) -> None:
         """Test clearing a folder's color."""
-        folder = manager.add_folder("Test")
-        manager.update_folder_color(folder.id, "#4a4a5a")
-        result = manager.update_folder_color(folder.id, None)
+        folder = bookmark_manager.add_folder("Test")
+        bookmark_manager.update_folder_color(folder.id, "#4a4a5a")
+        result = bookmark_manager.update_folder_color(folder.id, None)
 
         assert result is True
         assert folder.color is None
 
-    def test_update_folder_color_not_found(self, manager: BookmarkManager) -> None:
+    def test_update_folder_color_not_found(
+        self, bookmark_manager: BookmarkManager
+    ) -> None:
         """Test updating color for non-existent folder."""
-        result = manager.update_folder_color("fake-id", "#4a4a5a")
+        result = bookmark_manager.update_folder_color("fake-id", "#4a4a5a")
         assert result is False
 
-    def test_folder_color_persistence(self, temp_config_dir: Path) -> None:
+    def test_folder_color_persistence(self, tmp_path: Path) -> None:
         """Test that folder color is persisted to disk."""
-        manager1 = BookmarkManager(config_dir=temp_config_dir)
+        manager1 = BookmarkManager(config_dir=tmp_path)
         folder = manager1.add_folder("Colored Folder")
         manager1.update_folder_color(folder.id, "#b0c4de")
 
         # Load in new manager
-        manager2 = BookmarkManager(config_dir=temp_config_dir)
+        manager2 = BookmarkManager(config_dir=tmp_path)
         loaded_folder = manager2.get_folder(folder.id)
 
         assert loaded_folder is not None
         assert loaded_folder.color == "#b0c4de"
 
-    def test_get_folder(self, manager: BookmarkManager) -> None:
+    def test_get_folder(self, bookmark_manager: BookmarkManager) -> None:
         """Test getting a folder by ID."""
-        folder = manager.add_folder("Test")
-        found = manager.get_folder(folder.id)
+        folder = bookmark_manager.add_folder("Test")
+        found = bookmark_manager.get_folder(folder.id)
 
         assert found == folder
 
-    def test_get_all_folders(self, manager: BookmarkManager) -> None:
+    def test_get_all_folders(self, bookmark_manager: BookmarkManager) -> None:
         """Test getting all folders."""
-        manager.add_folder("A")
-        manager.add_folder("B")
-        manager.add_folder("C")
+        bookmark_manager.add_folder("A")
+        bookmark_manager.add_folder("B")
+        bookmark_manager.add_folder("C")
 
-        folders = manager.get_all_folders()
+        folders = bookmark_manager.get_all_folders()
 
         assert len(folders) == 3
 
-    def test_persistence_save_and_load(self, temp_config_dir: Path) -> None:
+    def test_persistence_save_and_load(self, tmp_path: Path) -> None:
         """Test that bookmarks are persisted to disk."""
         # Create and save
-        manager1 = BookmarkManager(config_dir=temp_config_dir)
+        manager1 = BookmarkManager(config_dir=tmp_path)
         folder = manager1.add_folder("Test Folder")
         manager1.add_bookmark("gemini://example.com/", "Example", folder_id=folder.id)
         manager1.add_bookmark("gemini://other.com/", "Other")
 
         # Load in new manager
-        manager2 = BookmarkManager(config_dir=temp_config_dir)
+        manager2 = BookmarkManager(config_dir=tmp_path)
 
         assert len(manager2.folders) == 1
         assert len(manager2.bookmarks) == 2
         assert manager2.folders[0].name == "Test Folder"
 
-    def test_persistence_file_location(self, temp_config_dir: Path) -> None:
+    def test_persistence_file_location(self, tmp_path: Path) -> None:
         """Test that bookmarks file is created in correct location."""
-        manager = BookmarkManager(config_dir=temp_config_dir)
+        manager = BookmarkManager(config_dir=tmp_path)
         manager.add_bookmark("gemini://example.com/", "Example")
 
-        expected_file = temp_config_dir / "bookmarks.toml"
+        expected_file = tmp_path / "bookmarks.toml"
         assert expected_file.exists()
 
-    def test_load_nonexistent_file(self, temp_config_dir: Path) -> None:
+    def test_load_nonexistent_file(self, tmp_path: Path) -> None:
         """Test loading when file doesn't exist yet."""
-        manager = BookmarkManager(config_dir=temp_config_dir)
+        manager = BookmarkManager(config_dir=tmp_path)
 
         assert len(manager.bookmarks) == 0
         assert len(manager.folders) == 0
 
-    def test_creates_config_directory(self) -> None:
+    def test_creates_config_directory(self, tmp_path: Path) -> None:
         """Test that config directory is created if it doesn't exist."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            nested_dir = Path(tmpdir) / "nested" / "config" / "dir"
-            manager = BookmarkManager(config_dir=nested_dir)
-            manager.add_bookmark("gemini://example.com/", "Example")
+        nested_dir = tmp_path / "nested" / "config" / "dir"
+        manager = BookmarkManager(config_dir=nested_dir)
+        manager.add_bookmark("gemini://example.com/", "Example")
 
-            assert nested_dir.exists()
-            assert (nested_dir / "bookmarks.toml").exists()
+        assert nested_dir.exists()
+        assert (nested_dir / "bookmarks.toml").exists()

@@ -254,21 +254,10 @@ class TestSessionChoicePersistence:
     """Tests for session identity choice persistence."""
 
     @pytest.mark.asyncio
-    async def test_save_and_load_session_choice(self, mock_gemini_client, tmp_path):
+    async def test_save_and_load_session_choice(
+        self, mock_gemini_client, config_with_identity_prompt, tmp_path
+    ):
         """Test that session choices are persisted and loaded correctly."""
-        config_path = tmp_path / "config.toml"
-        config_path.write_text(
-            """\
-[appearance]
-theme = "textual-dark"
-
-[browsing]
-timeout = 30
-max_redirects = 5
-identity_prompt = "remember_choice"
-"""
-        )
-
         # Create a mock identity
         from astronomo.identities import Identity
         from datetime import datetime
@@ -283,7 +272,7 @@ identity_prompt = "remember_choice"
             created_at=datetime.now(),
         )
 
-        app = Astronomo(config_path=config_path)
+        app = Astronomo(config_path=config_with_identity_prompt)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
@@ -305,20 +294,9 @@ identity_prompt = "remember_choice"
             assert data["choices"][prefix] == "test-id-123"
 
     @pytest.mark.asyncio
-    async def test_save_anonymous_choice(self, mock_gemini_client, tmp_path):
+    async def test_save_anonymous_choice(self, mock_gemini_client, minimal_config_file):
         """Test that anonymous choice is persisted correctly."""
-        config_path = tmp_path / "config.toml"
-        config_path.write_text(
-            """\
-[appearance]
-theme = "textual-dark"
-
-[browsing]
-timeout = 30
-"""
-        )
-
-        app = Astronomo(config_path=config_path)
+        app = Astronomo(config_path=minimal_config_file)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
@@ -336,20 +314,11 @@ timeout = 30
             assert data["choices"][prefix] == "anonymous"
 
     @pytest.mark.asyncio
-    async def test_load_session_choices_on_startup(self, mock_gemini_client, tmp_path):
+    async def test_load_session_choices_on_startup(
+        self, mock_gemini_client, minimal_config_file, session_choices_file, tmp_path
+    ):
         """Test that session choices are loaded on app startup."""
         import tomli_w
-
-        config_path = tmp_path / "config.toml"
-        config_path.write_text(
-            """\
-[appearance]
-theme = "textual-dark"
-
-[browsing]
-timeout = 30
-"""
-        )
 
         # Create identity files
         certs_dir = tmp_path / "certificates"
@@ -378,18 +347,7 @@ timeout = 30
         with open(identities_file, "wb") as f:
             tomli_w.dump(identity_data, f)
 
-        # Pre-create session choices file
-        session_file = tmp_path / "session_choices.toml"
-        with open(session_file, "wb") as f:
-            tomli_w.dump(
-                {
-                    "choices": {
-                        "gemini://example.com/": "test-id",
-                        "gemini://other.com/": "anonymous",
-                    }
-                },
-                f,
-            )
+        # session_choices_file fixture creates session_choices.toml with test-id and anonymous
 
         # Patch IdentityManager to use our temp dir
         from unittest.mock import patch
@@ -402,7 +360,7 @@ timeout = 30
             mock_manager.is_identity_valid.return_value = True
             mock_manager_class.return_value = mock_manager
 
-            app = Astronomo(config_path=config_path)
+            app = Astronomo(config_path=minimal_config_file)
 
             async with app.run_test(size=(80, 24)) as pilot:
                 await pilot.pause()
@@ -419,12 +377,11 @@ class TestIdentityPromptBehavior:
     """Tests for identity_prompt setting behavior."""
 
     @pytest.mark.asyncio
-    async def test_get_session_prefix_for_url(self, mock_gemini_client, tmp_path):
+    async def test_get_session_prefix_for_url(
+        self, mock_gemini_client, minimal_config_file
+    ):
         """Test URL prefix extraction."""
-        config_path = tmp_path / "config.toml"
-        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
-
-        app = Astronomo(config_path=config_path)
+        app = Astronomo(config_path=minimal_config_file)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
@@ -445,15 +402,12 @@ class TestIdentityPromptBehavior:
 
     @pytest.mark.asyncio
     async def test_get_session_identity_choice_not_prompted(
-        self, mock_gemini_client, tmp_path
+        self, mock_gemini_client, minimal_config_file
     ):
         """Test that _NOT_YET_PROMPTED is returned for unknown URLs."""
         from astronomo.astronomo_app import _NOT_YET_PROMPTED
 
-        config_path = tmp_path / "config.toml"
-        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
-
-        app = Astronomo(config_path=config_path)
+        app = Astronomo(config_path=minimal_config_file)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
@@ -463,13 +417,10 @@ class TestIdentityPromptBehavior:
 
     @pytest.mark.asyncio
     async def test_get_session_identity_choice_anonymous(
-        self, mock_gemini_client, tmp_path
+        self, mock_gemini_client, minimal_config_file
     ):
         """Test that None is returned for anonymous choices."""
-        config_path = tmp_path / "config.toml"
-        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
-
-        app = Astronomo(config_path=config_path)
+        app = Astronomo(config_path=minimal_config_file)
 
         async with app.run_test(size=(80, 24)) as pilot:
             await pilot.pause()
@@ -482,13 +433,10 @@ class TestIdentityPromptBehavior:
 
     @pytest.mark.asyncio
     async def test_get_session_identity_choice_with_identity(
-        self, mock_gemini_client, tmp_path
+        self, mock_gemini_client, minimal_config_file
     ):
         """Test that identity is returned when previously selected."""
         from unittest.mock import patch
-
-        config_path = tmp_path / "config.toml"
-        config_path.write_text("[appearance]\ntheme = 'textual-dark'\n")
 
         mock_identity = MagicMock()
         mock_identity.id = "test-id"
@@ -498,7 +446,7 @@ class TestIdentityPromptBehavior:
             mock_manager.is_identity_valid.return_value = True
             mock_manager_class.return_value = mock_manager
 
-            app = Astronomo(config_path=config_path)
+            app = Astronomo(config_path=minimal_config_file)
 
             async with app.run_test(size=(80, 24)) as pilot:
                 await pilot.pause()

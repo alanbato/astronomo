@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Switched type checker from mypy to ty for faster type checking
+- Refactored test suite to use shared pytest fixtures, reducing code duplication across test files
 
 ### Fixed
 - Settings modal tab navigation no longer stops on invisible scroll containers

@@ -1,35 +1,10 @@
 """Tests for the settings screen and settings panels."""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 from textual.app import App, ComposeResult
 
-from astronomo.config import ConfigManager
-from astronomo.identities import IdentityManager
 from astronomo.widgets.settings import AppearanceSettings, BrowsingSettings
 from astronomo.widgets.settings.certificates import CertificatesSettings
-
-
-@pytest.fixture
-def temp_config_dir():
-    """Create a temporary directory for test config."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
-
-
-@pytest.fixture
-def config_manager(temp_config_dir):
-    """Create a ConfigManager with temporary storage."""
-    config_path = temp_config_dir / "config.toml"
-    return ConfigManager(config_path=config_path)
-
-
-@pytest.fixture
-def identity_manager(temp_config_dir):
-    """Create an IdentityManager with temporary storage."""
-    return IdentityManager(config_dir=temp_config_dir)
 
 
 class WidgetTestApp(App):

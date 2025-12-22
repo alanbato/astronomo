@@ -1,9 +1,7 @@
 """Tests for the configuration module."""
 
-import tempfile
 from pathlib import Path
 
-import pytest
 
 from astronomo.config import (
     AppearanceConfig,
@@ -294,21 +292,9 @@ class TestConfig:
 class TestConfigManager:
     """Tests for the ConfigManager class."""
 
-    @pytest.fixture
-    def temp_config_dir(self):
-        """Create a temporary directory for test config."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def manager(self, temp_config_dir: Path) -> ConfigManager:
-        """Create a ConfigManager with temporary storage."""
-        config_path = temp_config_dir / "config.toml"
-        return ConfigManager(config_path=config_path)
-
-    def test_creates_default_config_on_first_run(self, temp_config_dir: Path) -> None:
+    def test_creates_default_config_on_first_run(self, tmp_path: Path) -> None:
         """Test that config file is created on first run."""
-        config_path = temp_config_dir / "config.toml"
+        config_path = tmp_path / "config.toml"
         ConfigManager(config_path=config_path)
 
         assert config_path.exists()
@@ -316,18 +302,18 @@ class TestConfigManager:
         assert "[appearance]" in content
         assert "[browsing]" in content
 
-    def test_default_config_has_comments(self, temp_config_dir: Path) -> None:
+    def test_default_config_has_comments(self, tmp_path: Path) -> None:
         """Test that default config file contains helpful comments."""
-        config_path = temp_config_dir / "config.toml"
+        config_path = tmp_path / "config.toml"
         ConfigManager(config_path=config_path)
 
         content = config_path.read_text()
         assert "# " in content  # Has comments
         assert "Available themes:" in content
 
-    def test_loads_existing_config(self, temp_config_dir: Path) -> None:
+    def test_loads_existing_config(self, tmp_path: Path) -> None:
         """Test loading an existing config file."""
-        config_path = temp_config_dir / "config.toml"
+        config_path = tmp_path / "config.toml"
 
         # Write a custom config
         config_path.write_text(
@@ -346,9 +332,9 @@ timeout = 60
         assert manager.timeout == 60
         assert manager.home_page is None  # Not set in config
 
-    def test_handles_corrupted_file(self, temp_config_dir: Path) -> None:
+    def test_handles_corrupted_file(self, tmp_path: Path) -> None:
         """Test graceful handling of corrupted config file."""
-        config_path = temp_config_dir / "config.toml"
+        config_path = tmp_path / "config.toml"
         config_path.write_text("this is not { valid toml")
 
         manager = ConfigManager(config_path=config_path)
@@ -357,29 +343,33 @@ timeout = 60
         assert manager.theme == "textual-dark"
         assert manager.timeout == 30
 
-    def test_creates_nested_directories(self) -> None:
+    def test_creates_nested_directories(self, tmp_path: Path) -> None:
         """Test that nested config directories are created."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            nested_path = Path(tmpdir) / "nested" / "dir" / "config.toml"
-            ConfigManager(config_path=nested_path)
+        nested_path = tmp_path / "nested" / "dir" / "config.toml"
+        ConfigManager(config_path=nested_path)
 
-            assert nested_path.exists()
+        assert nested_path.exists()
 
-    def test_convenience_properties(self, manager: ConfigManager) -> None:
+    def test_convenience_properties(self, config_manager: ConfigManager) -> None:
         """Test that convenience properties work correctly."""
-        assert manager.theme == manager.config.appearance.theme
-        assert manager.home_page == manager.config.browsing.home_page
-        assert manager.timeout == manager.config.browsing.timeout
-        assert manager.max_redirects == manager.config.browsing.max_redirects
-        assert manager.snapshots_directory == manager.config.snapshots.directory
+        assert config_manager.theme == config_manager.config.appearance.theme
+        assert config_manager.home_page == config_manager.config.browsing.home_page
+        assert config_manager.timeout == config_manager.config.browsing.timeout
         assert (
-            manager.syntax_highlighting == manager.config.appearance.syntax_highlighting
+            config_manager.max_redirects == config_manager.config.browsing.max_redirects
         )
-        assert manager.show_emoji == manager.config.appearance.show_emoji
+        assert (
+            config_manager.snapshots_directory == config_manager.config.snapshots.directory
+        )
+        assert (
+            config_manager.syntax_highlighting
+            == config_manager.config.appearance.syntax_highlighting
+        )
+        assert config_manager.show_emoji == config_manager.config.appearance.show_emoji
 
-    def test_save_and_reload(self, temp_config_dir: Path) -> None:
+    def test_save_and_reload(self, tmp_path: Path) -> None:
         """Test saving and reloading configuration."""
-        config_path = temp_config_dir / "config.toml"
+        config_path = tmp_path / "config.toml"
 
         manager1 = ConfigManager(config_path=config_path)
         manager1.config.appearance.theme = "gruvbox"
