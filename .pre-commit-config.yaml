@@ -35,12 +35,12 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
 
-  # Type checking with mypy (using local uv environment)
+  # Type checking with ty (using local uv environment)
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: 'uv run mypy src/'
+      - id: ty
+        name: ty
+        entry: 'uv run ty check src/'
         language: system
         types: [python]
         pass_filenames: false

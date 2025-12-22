@@ -4,14 +4,20 @@ This module provides bookmark storage with folder organization
 and TOML persistence.
 """
 
-import tomllib
+import sys
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Self
 
 import tomli_w
+
+if sys.version_info >= (3, 11):
+    import tomllib
+    from typing import Self
+else:
+    import tomli as tomllib
+    from typing_extensions import Self
 
 
 @dataclass

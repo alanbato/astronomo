@@ -4,9 +4,19 @@ This module implements a parser for the Gemtext markup format as specified at:
 https://geminiprotocol.net/docs/gemtext.gmi
 """
 
+import sys
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 from typing import Literal
+
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    # Backport for Python 3.10
+    class StrEnum(str, Enum):
+        """String enum backport for Python 3.10."""
+
+        pass
 
 
 class LineType(StrEnum):

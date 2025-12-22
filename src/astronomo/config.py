@@ -4,12 +4,19 @@ This module provides configuration storage with TOML persistence
 and sensible defaults.
 """
 
-import tomllib
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Self
+from typing import Any
 
 import tomli_w
+
+if sys.version_info >= (3, 11):
+    import tomllib
+    from typing import Self
+else:
+    import tomli as tomllib
+    from typing_extensions import Self
 
 # Available Textual themes (built-in)
 VALID_THEMES = frozenset(

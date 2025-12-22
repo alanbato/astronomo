@@ -13,6 +13,8 @@ dependencies = [
     "nauyaca>=0.1.0",
     "textual[syntax]>=6.6.0",
     "tomli-w>=1.0.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+    "typing_extensions>=4.0.0; python_version < '3.11'",
     "typer>=0.20.0",
 ]
 
@@ -25,7 +27,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.13.0",
+    "ty>=0.0.1a12",
     "nox>=2024.10.9",
     "pre-commit>=4.4.0",
     "pytest>=9.0.1",
@@ -41,6 +43,9 @@ docs = [
     "mkdocstrings[python]>=1.0.0",
     "pymdown-extensions>=10.17.2",
 ]
+
+[tool.ty.environment]
+python-version = "3.11"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

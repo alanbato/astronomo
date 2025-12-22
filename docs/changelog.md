@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Import identities from Lagrange browser: Settings > Certificates now includes an "Import from Lagrange" button that discovers and imports existing Lagrange client certificates
 - Import custom certificates: Settings > Certificates now includes an "Import Certificate" button to import existing certificate/key files. Supports both separate cert+key files and combined PEM files containing both certificate and private key. Includes a file browser for easy selection
 
+### Changed
+- Switched type checker from mypy to ty for faster type checking
+
 ### Fixed
 - Settings modal tab navigation no longer stops on invisible scroll containers
 

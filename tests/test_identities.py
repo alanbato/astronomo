@@ -309,7 +309,9 @@ class TestIdentityManager:
         result = manager.rename_identity(identity.id, "New Name")
 
         assert result is True
-        assert manager.get_identity(identity.id).name == "New Name"
+        updated = manager.get_identity(identity.id)
+        assert updated is not None
+        assert updated.name == "New Name"
 
     def test_rename_identity_not_found(self, manager: IdentityManager) -> None:
         """Test renaming a non-existent identity."""
@@ -406,10 +408,12 @@ class TestIdentityManager:
 
         # Specific path should match app-specific identity
         found = manager.get_identity_for_url("gemini://example.com/app/page")
+        assert found is not None
         assert found.id == identity2.id
 
         # Root path should match site-wide identity
         found = manager.get_identity_for_url("gemini://example.com/other/page")
+        assert found is not None
         assert found.id == identity1.id
 
     def test_is_identity_valid(self, manager: IdentityManager) -> None:

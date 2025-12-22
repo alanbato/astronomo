@@ -1,6 +1,7 @@
 """Tests for the bookmarks module."""
 
 import tempfile
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -140,7 +141,7 @@ class TestBookmarkManager:
     """Tests for the BookmarkManager class."""
 
     @pytest.fixture
-    def temp_config_dir(self) -> Path:
+    def temp_config_dir(self) -> Iterator[Path]:
         """Create a temporary directory for test config."""
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
