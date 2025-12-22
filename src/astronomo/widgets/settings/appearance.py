@@ -12,6 +12,8 @@ from astronomo.widgets.settings.base import SettingDefinition, SettingRow, Widge
 if TYPE_CHECKING:
     from astronomo.astronomo_app import Astronomo
 
+from astronomo.widgets.gemtext_viewer import GemtextViewer
+
 
 APPEARANCE_SETTINGS = [
     SettingDefinition(
@@ -27,6 +29,13 @@ APPEARANCE_SETTINGS = [
         label="Syntax Highlighting",
         widget_type=WidgetType.SWITCH,
         description="Enable syntax highlighting in preformatted code blocks",
+        default=True,
+    ),
+    SettingDefinition(
+        key="appearance.show_emoji",
+        label="Show Emoji",
+        widget_type=WidgetType.SWITCH,
+        description="Display emoji characters (off shows text descriptions)",
         default=True,
     ),
 ]
@@ -67,12 +76,18 @@ class AppearanceSettings(Static):
         """Handle setting change - update config and save."""
         parts = key.split(".")
         if parts[0] == "appearance":
+            app: Astronomo = self.app  # type: ignore[assignment]
             if parts[1] == "theme":
                 self.config_manager.config.appearance.theme = value
                 self.config_manager.save()
                 # Apply theme immediately
-                app: Astronomo = self.app  # type: ignore[assignment]
                 app.theme = value
             elif parts[1] == "syntax_highlighting":
                 self.config_manager.config.appearance.syntax_highlighting = value
                 self.config_manager.save()
+            elif parts[1] == "show_emoji":
+                self.config_manager.config.appearance.show_emoji = value
+                self.config_manager.save()
+                # Re-render content to apply the change (no network request)
+                viewer = app.query_one("GemtextViewer", expect_type=GemtextViewer)
+                viewer.rerender_content()

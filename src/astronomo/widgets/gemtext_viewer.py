@@ -9,6 +9,7 @@ from textual.message import Message
 from textual.reactive import reactive
 from textual.widgets import Static
 
+from astronomo.emoji_utils import translate_emoji
 from astronomo.parser import (
     GemtextHeading,
     GemtextLine,
@@ -39,6 +40,24 @@ class GemtextLineWidget(Static):
         super().__init__(**kwargs)
         self.line = line
 
+    def _process_emoji(self, content: str) -> str:
+        """Translate emoji to text if show_emoji config is disabled.
+
+        Args:
+            content: The text content to process.
+
+        Returns:
+            Content with emoji translated to text descriptions if disabled,
+            otherwise unchanged.
+        """
+        try:
+            app: Astronomo = self.app  # type: ignore[assignment]
+            if app.config_manager.config.appearance.show_emoji:
+                return content
+            return translate_emoji(content)
+        except AttributeError:
+            return content  # App not available (e.g., in tests)
+
 
 class GemtextTextWidget(GemtextLineWidget):
     """Widget for plain text lines."""
@@ -50,7 +69,7 @@ class GemtextTextWidget(GemtextLineWidget):
     """
 
     def render(self) -> str:
-        return self.line.content
+        return self._process_emoji(self.line.content)
 
 
 class GemtextHeadingWidget(GemtextLineWidget):
@@ -83,7 +102,7 @@ class GemtextHeadingWidget(GemtextLineWidget):
         self.add_class(f"-level-{line.level}")
 
     def render(self) -> str:
-        return self.line.content
+        return self._process_emoji(self.line.content)
 
 
 class GemtextListItemWidget(GemtextLineWidget):
@@ -99,7 +118,8 @@ class GemtextListItemWidget(GemtextLineWidget):
     PADDING = "  "
 
     def render(self) -> str:
-        return f"{self.PADDING}{self.LIST_BULLET} {self.line.content}"
+        content = self._process_emoji(self.line.content)
+        return f"{self.PADDING}{self.LIST_BULLET} {content}"
 
 
 class GemtextBlockquoteWidget(GemtextLineWidget):
@@ -115,7 +135,8 @@ class GemtextBlockquoteWidget(GemtextLineWidget):
     QUOTE_PREFIX = "┃"
 
     def render(self) -> str:
-        return f"{self.QUOTE_PREFIX} {self.line.content}"
+        content = self._process_emoji(self.line.content)
+        return f"{self.QUOTE_PREFIX} {content}"
 
 
 class GemtextPreformattedWidget(GemtextLineWidget):
@@ -185,7 +206,8 @@ class GemtextLinkWidget(GemtextLineWidget):
 
     def render(self) -> str:
         prefix = self.LINK_INDICATOR if self.has_class("-selected") else ""
-        return f"{prefix}{self.line.content}"
+        content = self._process_emoji(self.line.content)
+        return f"{prefix}{content}"
 
     def on_click(self) -> None:
         """Handle click on link."""
@@ -282,6 +304,14 @@ class GemtextViewer(VerticalScroll):
         if 0 <= index < len(self._link_widgets):
             return self._link_widgets[index]
         return None
+
+    def rerender_content(self) -> None:
+        """Re-render the current content without fetching from network.
+
+        Useful when display settings change (e.g., emoji mode).
+        """
+        if self.lines:
+            self.update_content(self.lines)
 
     def update_content(self, lines: list[GemtextLine]) -> None:
         """Update the displayed content with parsed Gemtext lines."""

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Emoji display mode setting: toggle between showing Unicode emoji or text descriptions (e.g., `(grinning face)`) in Settings > Appearance
 - Settings button (cog icon) in the navigation bar for quick access to settings
 - Folder color customization: set custom background colors for bookmark folders via the Edit Folder dialog
 - Color picker with 12 preset colors (6 muted, 6 pastel) and custom hex input support

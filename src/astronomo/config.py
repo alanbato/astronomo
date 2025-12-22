@@ -44,6 +44,9 @@ theme = "textual-dark"
 # Uses language hints from alt text (e.g., ```python) or auto-detection
 syntax_highlighting = true
 
+# Show emoji characters (off displays text descriptions like [smile])
+show_emoji = true
+
 [browsing]
 # Default home page when launching without a URL argument
 # Uncomment and set to your preferred start page:
@@ -70,16 +73,19 @@ class AppearanceConfig:
     Attributes:
         theme: Textual theme name (e.g., "textual-dark", "nord", "gruvbox")
         syntax_highlighting: Enable syntax highlighting in preformatted blocks
+        show_emoji: Display emoji characters (False shows text descriptions)
     """
 
     theme: str = "textual-dark"
     syntax_highlighting: bool = True
+    show_emoji: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
         return {
             "theme": self.theme,
             "syntax_highlighting": self.syntax_highlighting,
+            "show_emoji": self.show_emoji,
         }
 
     @classmethod
@@ -97,7 +103,15 @@ class AppearanceConfig:
         if not isinstance(syntax_highlighting, bool):
             syntax_highlighting = defaults.syntax_highlighting
 
-        return cls(theme=theme, syntax_highlighting=syntax_highlighting)
+        show_emoji = data.get("show_emoji", defaults.show_emoji)
+        if not isinstance(show_emoji, bool):
+            show_emoji = defaults.show_emoji
+
+        return cls(
+            theme=theme,
+            syntax_highlighting=syntax_highlighting,
+            show_emoji=show_emoji,
+        )
 
 
 @dataclass
@@ -317,3 +331,8 @@ class ConfigManager:
     def snapshots_directory(self) -> str | None:
         """Get the configured snapshots directory, or None for default."""
         return self.config.snapshots.directory
+
+    @property
+    def show_emoji(self) -> bool:
+        """Get whether emoji should be displayed as-is."""
+        return self.config.appearance.show_emoji

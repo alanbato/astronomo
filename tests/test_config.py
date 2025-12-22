@@ -23,12 +23,24 @@ class TestAppearanceConfig:
         """Test default appearance values."""
         config = AppearanceConfig()
         assert config.theme == "textual-dark"
+        assert config.syntax_highlighting is True
+        assert config.show_emoji is True
 
     def test_to_dict(self) -> None:
         """Test converting to dictionary."""
         config = AppearanceConfig(theme="nord")
         data = config.to_dict()
-        assert data == {"theme": "nord", "syntax_highlighting": True}
+        assert data == {
+            "theme": "nord",
+            "syntax_highlighting": True,
+            "show_emoji": True,
+        }
+
+    def test_to_dict_with_show_emoji_false(self) -> None:
+        """Test converting to dictionary with show_emoji disabled."""
+        config = AppearanceConfig(theme="nord", show_emoji=False)
+        data = config.to_dict()
+        assert data["show_emoji"] is False
 
     def test_from_dict_valid_theme(self) -> None:
         """Test creating from dictionary with valid theme."""
@@ -49,6 +61,26 @@ class TestAppearanceConfig:
         """Test that missing theme uses default."""
         config = AppearanceConfig.from_dict({})
         assert config.theme == "textual-dark"
+
+    def test_from_dict_show_emoji_true(self) -> None:
+        """Test creating from dictionary with show_emoji enabled."""
+        config = AppearanceConfig.from_dict({"show_emoji": True})
+        assert config.show_emoji is True
+
+    def test_from_dict_show_emoji_false(self) -> None:
+        """Test creating from dictionary with show_emoji disabled."""
+        config = AppearanceConfig.from_dict({"show_emoji": False})
+        assert config.show_emoji is False
+
+    def test_from_dict_invalid_show_emoji_falls_back(self) -> None:
+        """Test that invalid show_emoji type falls back to default."""
+        config = AppearanceConfig.from_dict({"show_emoji": "not-a-bool"})
+        assert config.show_emoji is True
+
+    def test_from_dict_missing_show_emoji(self) -> None:
+        """Test that missing show_emoji uses default."""
+        config = AppearanceConfig.from_dict({})
+        assert config.show_emoji is True
 
 
 class TestBrowsingConfig:
@@ -321,6 +353,10 @@ timeout = 60
         assert manager.timeout == manager.config.browsing.timeout
         assert manager.max_redirects == manager.config.browsing.max_redirects
         assert manager.snapshots_directory == manager.config.snapshots.directory
+        assert (
+            manager.syntax_highlighting == manager.config.appearance.syntax_highlighting
+        )
+        assert manager.show_emoji == manager.config.appearance.show_emoji
 
     def test_save_and_reload(self, temp_config_dir: Path) -> None:
         """Test saving and reloading configuration."""
@@ -381,6 +417,8 @@ class TestDefaultConfigTemplate:
         assert 'theme = "textual-dark"' in DEFAULT_CONFIG_TEMPLATE
         assert "timeout = 30" in DEFAULT_CONFIG_TEMPLATE
         assert "max_redirects = 5" in DEFAULT_CONFIG_TEMPLATE
+        assert "syntax_highlighting = true" in DEFAULT_CONFIG_TEMPLATE
+        assert "show_emoji = true" in DEFAULT_CONFIG_TEMPLATE
 
     def test_template_has_commented_home_page(self) -> None:
         """Test that home_page is commented out by default."""
