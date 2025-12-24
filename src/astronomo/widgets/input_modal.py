@@ -10,7 +10,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label
+from textual.widgets import Button, Input, Label, TextArea
 
 
 class InputModal(ModalScreen[str | None]):
@@ -52,6 +52,20 @@ class InputModal(ModalScreen[str | None]):
     InputModal Input {
         width: 100%;
         margin-bottom: 1;
+    }
+
+    InputModal TextArea {
+        width: 100%;
+        height: 3;
+        margin-bottom: 1;
+    }
+
+    InputModal TextArea.expanded {
+        height: 8;
+    }
+
+    InputModal TextArea.large {
+        height: 15;
     }
 
     InputModal .byte-counter {
@@ -99,6 +113,9 @@ class InputModal(ModalScreen[str | None]):
         self.sensitive = sensitive
         # Calculate base URL length (without query) for byte counting
         self._base_url = url.split("?")[0]
+        # Thresholds for expanding the text area
+        self._expand_threshold = 100  # Characters to trigger first expansion
+        self._large_threshold = 300  # Characters to trigger large expansion
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
@@ -107,11 +124,19 @@ class InputModal(ModalScreen[str | None]):
         with Container():
             yield Label(title, classes="modal-title")
             yield Label(self.prompt, classes="prompt-text")
-            yield Input(
-                placeholder="Enter your response...",
-                password=self.sensitive,
-                id="input-field",
-            )
+
+            # Use Input for sensitive data (passwords), TextArea for regular input
+            if self.sensitive:
+                yield Input(
+                    placeholder="Enter your response...",
+                    password=True,
+                    id="input-field",
+                )
+            else:
+                yield TextArea(
+                    id="input-field",
+                )
+
             yield Label(
                 self._format_byte_counter(""), id="byte-counter", classes="byte-counter"
             )
@@ -122,21 +147,45 @@ class InputModal(ModalScreen[str | None]):
 
     def on_mount(self) -> None:
         """Focus the input field on mount."""
-        self.query_one("#input-field", Input).focus()
+        input_field = self.query_one("#input-field")
+        input_field.focus()
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        """Update byte counter as user types."""
+        """Update byte counter as user types (for Input widget)."""
         if event.input.id == "input-field":
-            byte_counter = self.query_one("#byte-counter", Label)
-            remaining = self._calculate_remaining_bytes(event.value)
-            byte_counter.update(self._format_byte_counter(event.value))
+            self._update_counter_and_size(event.value)
 
-            # Update styling based on remaining bytes
-            byte_counter.remove_class("-warning", "-error")
-            if remaining < 0:
-                byte_counter.add_class("-error")
-            elif remaining < 100:
-                byte_counter.add_class("-warning")
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        """Update byte counter and handle expansion as user types (for TextArea widget)."""
+        if event.text_area.id == "input-field":
+            value = event.text_area.text
+            self._update_counter_and_size(value)
+
+            # Handle TextArea expansion based on input length
+            text_area = event.text_area
+            input_length = len(value)
+
+            # Remove all size classes first
+            text_area.remove_class("expanded", "large")
+
+            # Apply appropriate size class based on thresholds
+            if input_length >= self._large_threshold:
+                text_area.add_class("large")
+            elif input_length >= self._expand_threshold:
+                text_area.add_class("expanded")
+
+    def _update_counter_and_size(self, value: str) -> None:
+        """Update byte counter display and styling."""
+        byte_counter = self.query_one("#byte-counter", Label)
+        remaining = self._calculate_remaining_bytes(value)
+        byte_counter.update(self._format_byte_counter(value))
+
+        # Update styling based on remaining bytes
+        byte_counter.remove_class("-warning", "-error")
+        if remaining < 0:
+            byte_counter.add_class("-error")
+        elif remaining < 100:
+            byte_counter.add_class("-warning")
 
     def _calculate_remaining_bytes(self, input_value: str) -> int:
         """Calculate remaining bytes for URL limit.
@@ -172,8 +221,13 @@ class InputModal(ModalScreen[str | None]):
 
     def _submit_input(self) -> None:
         """Submit the input and dismiss the modal."""
-        input_field = self.query_one("#input-field", Input)
-        value = input_field.value
+        input_field = self.query_one("#input-field")
+
+        # Get value based on widget type
+        if isinstance(input_field, Input):
+            value = input_field.value
+        else:  # TextArea
+            value = input_field.text
 
         # Check if URL would be too long
         if self._calculate_remaining_bytes(value) < 0:
