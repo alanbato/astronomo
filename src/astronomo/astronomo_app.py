@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import (
     quote,
@@ -31,6 +32,7 @@ from astronomo.widgets import (
     IdentityResult,
     IdentitySelectModal,
     InputModal,
+    SaveSnapshotModal,
     SessionIdentityModal,
     SessionIdentityResult,
 )
@@ -71,6 +73,7 @@ class Astronomo(App[None]):
         ("ctrl+r", "refresh", "Refresh"),
         ("ctrl+b", "toggle_bookmarks", "Bookmarks"),
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
+        ("ctrl+s", "save_snapshot", "Save Snapshot"),
         ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 
@@ -678,6 +681,60 @@ class Astronomo(App[None]):
             if line.line_type == LineType.HEADING_1:
                 return line.content
         return None
+
+    def action_save_snapshot(self) -> None:
+        """Save a snapshot of the current page."""
+        if not self.current_url:
+            return
+
+        # Get the viewer to access current content
+        viewer = self.query_one("#content", GemtextViewer)
+        if not viewer.lines:
+            return
+
+        # Determine snapshot directory (config or default)
+        snapshot_dir_str = self.config_manager.snapshots_directory
+        if snapshot_dir_str:
+            snapshot_dir = Path(snapshot_dir_str).expanduser()
+        else:
+            # Default: ~/.local/share/astronomo/snapshots
+            snapshot_dir = Path.home() / ".local" / "share" / "astronomo" / "snapshots"
+
+        # Ensure directory exists
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        # Try to create a meaningful filename from the URL
+        parsed = urlparse(self.current_url)
+        hostname = parsed.netloc or "page"
+        # Clean up hostname to be filesystem-safe
+        hostname = hostname.replace(":", "_").replace("/", "_")
+
+        filename = f"{hostname}_{timestamp}.gmi"
+        save_path = snapshot_dir / filename
+
+        def handle_result(confirmed: bool) -> None:
+            if confirmed:
+                try:
+                    # Reconstruct the original gemtext from parsed lines
+                    gemtext_lines = [line.raw for line in viewer.lines]
+                    content = "\n".join(gemtext_lines)
+
+                    # Write to file
+                    save_path.write_text(content, encoding="utf-8")
+
+                    # Could show a success notification here if desired
+                except Exception as e:
+                    # Handle errors gracefully
+                    # Could show an error notification here
+                    pass
+
+        self.push_screen(
+            SaveSnapshotModal(url=self.current_url, save_path=save_path),
+            handle_result,
+        )
 
     def on_bookmarks_sidebar_bookmark_selected(
         self, message: BookmarksSidebar.BookmarkSelected

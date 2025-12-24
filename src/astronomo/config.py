@@ -54,6 +54,12 @@ timeout = 30
 
 # Maximum number of redirects to follow
 max_redirects = 5
+
+[snapshots]
+# Directory where page snapshots are saved (Ctrl+S)
+# Default: ~/.local/share/astronomo/snapshots
+# Uncomment to use a custom directory:
+# directory = "/path/to/custom/snapshots"
 """
 
 
@@ -144,22 +150,53 @@ class BrowsingConfig:
 
 
 @dataclass
+class SnapshotsConfig:
+    """Snapshot settings.
+
+    Attributes:
+        directory: Directory where page snapshots are saved (None for default)
+    """
+
+    directory: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for TOML serialization."""
+        data: dict[str, Any] = {}
+        if self.directory is not None:
+            data["directory"] = self.directory
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create from dictionary with validation and fallback to defaults."""
+        directory = data.get("directory")
+        # Empty string or non-string treated as None (not set)
+        if not isinstance(directory, str) or not directory.strip():
+            directory = None
+
+        return cls(directory=directory)
+
+
+@dataclass
 class Config:
     """Root configuration container.
 
     Attributes:
         appearance: Visual appearance settings
         browsing: Browsing behavior settings
+        snapshots: Snapshot settings
     """
 
     appearance: AppearanceConfig = field(default_factory=AppearanceConfig)
     browsing: BrowsingConfig = field(default_factory=BrowsingConfig)
+    snapshots: SnapshotsConfig = field(default_factory=SnapshotsConfig)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
         return {
             "appearance": self.appearance.to_dict(),
             "browsing": self.browsing.to_dict(),
+            "snapshots": self.snapshots.to_dict(),
         }
 
     @classmethod
@@ -168,6 +205,7 @@ class Config:
         return cls(
             appearance=AppearanceConfig.from_dict(data.get("appearance", {})),
             browsing=BrowsingConfig.from_dict(data.get("browsing", {})),
+            snapshots=SnapshotsConfig.from_dict(data.get("snapshots", {})),
         )
 
 
@@ -265,3 +303,8 @@ class ConfigManager:
     def syntax_highlighting(self) -> bool:
         """Get whether syntax highlighting is enabled."""
         return self.config.appearance.syntax_highlighting
+
+    @property
+    def snapshots_directory(self) -> str | None:
+        """Get the configured snapshots directory, or None for default."""
+        return self.config.snapshots.directory

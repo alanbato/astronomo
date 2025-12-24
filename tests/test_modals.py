@@ -10,6 +10,7 @@ from textual.widgets import Input, Select
 from astronomo.bookmarks import BookmarkManager
 from astronomo.widgets.add_bookmark_modal import AddBookmarkModal, NEW_FOLDER_SENTINEL
 from astronomo.widgets.edit_item_modal import EditItemModal
+from astronomo.widgets.save_snapshot_modal import SaveSnapshotModal
 
 
 @pytest.fixture
@@ -288,3 +289,95 @@ class TestEditItemModal:
             await pilot.pause()
 
         assert bookmark.title == "Updated via Enter"
+
+
+class TestSaveSnapshotModal:
+    """Tests for the SaveSnapshotModal widget."""
+
+    @pytest.mark.asyncio
+    async def test_modal_displays_url(self, temp_config_dir):
+        """Test that modal displays the URL being saved."""
+        url = "gemini://example.com/page"
+        save_path = temp_config_dir / "test.gmi"
+        modal = SaveSnapshotModal(url, save_path)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            # Check that the modal stores the URL
+            assert modal.url == url
+
+    @pytest.mark.asyncio
+    async def test_modal_displays_save_path(self, temp_config_dir):
+        """Test that modal displays the save path."""
+        url = "gemini://example.com/page"
+        save_path = temp_config_dir / "test.gmi"
+        modal = SaveSnapshotModal(url, save_path)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            # Check that the modal stores the save path
+            assert modal.save_path == save_path
+
+    @pytest.mark.asyncio
+    async def test_save_button_confirms(self, temp_config_dir):
+        """Test that clicking save button returns True."""
+        url = "gemini://example.com/page"
+        save_path = temp_config_dir / "test.gmi"
+        modal = SaveSnapshotModal(url, save_path)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            save_btn = modal.query_one("#save-btn")
+            await pilot.click(save_btn)
+            await pilot.pause()
+
+        assert app._modal_result is True
+
+    @pytest.mark.asyncio
+    async def test_cancel_button_cancels(self, temp_config_dir):
+        """Test that clicking cancel button returns False."""
+        url = "gemini://example.com/page"
+        save_path = temp_config_dir / "test.gmi"
+        modal = SaveSnapshotModal(url, save_path)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            cancel_btn = modal.query_one("#cancel-btn")
+            await pilot.click(cancel_btn)
+            await pilot.pause()
+
+        assert app._modal_result is False
+
+    @pytest.mark.asyncio
+    async def test_escape_key_cancels(self, temp_config_dir):
+        """Test that escape key cancels the modal."""
+        url = "gemini://example.com/page"
+        save_path = temp_config_dir / "test.gmi"
+        modal = SaveSnapshotModal(url, save_path)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            await pilot.press("escape")
+            await pilot.pause()
+
+        assert app._modal_result is False
+
+    @pytest.mark.asyncio
+    async def test_enter_key_confirms(self, temp_config_dir):
+        """Test that enter key confirms the save."""
+        url = "gemini://example.com/page"
+        save_path = temp_config_dir / "test.gmi"
+        modal = SaveSnapshotModal(url, save_path)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            await pilot.press("enter")
+            await pilot.pause()
+
+        assert app._modal_result is True

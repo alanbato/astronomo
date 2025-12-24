@@ -11,6 +11,7 @@ from astronomo.config import (
     Config,
     ConfigManager,
     DEFAULT_CONFIG_TEMPLATE,
+    SnapshotsConfig,
     VALID_THEMES,
 )
 
@@ -140,6 +141,53 @@ class TestBrowsingConfig:
         assert config.max_redirects == 5
 
 
+class TestSnapshotsConfig:
+    """Tests for the SnapshotsConfig dataclass."""
+
+    def test_default_values(self) -> None:
+        """Test default snapshots values."""
+        config = SnapshotsConfig()
+        assert config.directory is None  # No default directory
+
+    def test_to_dict_without_directory(self) -> None:
+        """Test converting to dictionary without directory set."""
+        config = SnapshotsConfig()
+        data = config.to_dict()
+        assert data == {}
+        assert "directory" not in data  # Should not include None values
+
+    def test_to_dict_with_directory(self) -> None:
+        """Test converting to dictionary with directory set."""
+        config = SnapshotsConfig(directory="/custom/path")
+        data = config.to_dict()
+        assert data == {"directory": "/custom/path"}
+
+    def test_from_dict_valid_directory(self) -> None:
+        """Test creating from dictionary with valid directory."""
+        config = SnapshotsConfig.from_dict({"directory": "/my/snapshots"})
+        assert config.directory == "/my/snapshots"
+
+    def test_from_dict_empty_directory_is_none(self) -> None:
+        """Test that empty string directory is treated as None."""
+        config = SnapshotsConfig.from_dict({"directory": ""})
+        assert config.directory is None
+
+    def test_from_dict_whitespace_directory_is_none(self) -> None:
+        """Test that whitespace-only directory is treated as None."""
+        config = SnapshotsConfig.from_dict({"directory": "   "})
+        assert config.directory is None
+
+    def test_from_dict_wrong_type_falls_back(self) -> None:
+        """Test that wrong type falls back to None."""
+        config = SnapshotsConfig.from_dict({"directory": 123})
+        assert config.directory is None
+
+    def test_from_dict_missing_directory(self) -> None:
+        """Test that missing directory uses default (None)."""
+        config = SnapshotsConfig.from_dict({})
+        assert config.directory is None
+
+
 class TestConfig:
     """Tests for the root Config dataclass."""
 
@@ -148,6 +196,7 @@ class TestConfig:
         config = Config()
         assert config.appearance.theme == "textual-dark"
         assert config.browsing.timeout == 30
+        assert config.snapshots.directory is None
 
     def test_to_dict(self) -> None:
         """Test full config serialization."""
@@ -155,20 +204,24 @@ class TestConfig:
         data = config.to_dict()
         assert "appearance" in data
         assert "browsing" in data
+        assert "snapshots" in data
         assert data["appearance"]["theme"] == "textual-dark"
         assert data["browsing"]["timeout"] == 30
+        assert data["snapshots"] == {}
 
     def test_from_dict_partial_data(self) -> None:
         """Test that missing sections use defaults."""
         config = Config.from_dict({"appearance": {"theme": "nord"}})
         assert config.appearance.theme == "nord"
         assert config.browsing.timeout == 30  # Default
+        assert config.snapshots.directory is None  # Default
 
     def test_from_dict_empty(self) -> None:
         """Test that empty dict uses all defaults."""
         config = Config.from_dict({})
         assert config.appearance.theme == "textual-dark"
         assert config.browsing.home_page is None
+        assert config.snapshots.directory is None
 
 
 class TestConfigManager:
@@ -251,6 +304,7 @@ timeout = 60
         assert manager.home_page == manager.config.browsing.home_page
         assert manager.timeout == manager.config.browsing.timeout
         assert manager.max_redirects == manager.config.browsing.max_redirects
+        assert manager.snapshots_directory == manager.config.snapshots.directory
 
     def test_save_and_reload(self, temp_config_dir: Path) -> None:
         """Test saving and reloading configuration."""
