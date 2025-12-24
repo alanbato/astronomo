@@ -1,7 +1,10 @@
 """Additional tests for Astronomo app to improve coverage."""
 
+import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from astronomo.astronomo_app import Astronomo, build_query_url
 from astronomo.widgets import GemtextViewer, BookmarksSidebar
@@ -245,3 +248,294 @@ class TestGetPageTitle:
 
             title = app._get_page_title()
             assert title is None
+
+
+class TestSaveSnapshot:
+    """Tests for the snapshot save functionality."""
+
+    @pytest.mark.asyncio
+    async def test_does_nothing_without_url(self, mock_gemini_client, temp_config_path):
+        """Test that save snapshot does nothing when no URL is loaded."""
+        app = Astronomo(config_path=temp_config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            # Try to save snapshot without loading a page
+            with patch.object(app, "push_screen") as mock_push:
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                # Should not show modal since no URL
+                mock_push.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_shows_confirmation_modal(
+        self, mock_gemini_client, temp_config_path
+    ):
+        """Test that save snapshot shows confirmation modal."""
+        mock_gemini_client.get = AsyncMock(
+            return_value=MagicMock(
+                status=20,
+                body="# Test Page\nSome content",
+                meta="text/gemini",
+                mime_type="text/gemini",
+                is_success=MagicMock(return_value=True),
+                is_redirect=MagicMock(return_value=False),
+            )
+        )
+
+        app = Astronomo(
+            initial_url="gemini://example.com/test", config_path=temp_config_path
+        )
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            with patch.object(app, "push_screen") as mock_push:
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                # Should show modal
+                mock_push.assert_called_once()
+                # First arg should be SaveSnapshotModal
+                modal_arg = mock_push.call_args[0][0]
+                assert modal_arg.__class__.__name__ == "SaveSnapshotModal"
+
+    @pytest.mark.asyncio
+    async def test_uses_default_snapshot_directory(
+        self, mock_gemini_client, temp_config_path
+    ):
+        """Test that default snapshot directory is used when not configured."""
+        mock_gemini_client.get = AsyncMock(
+            return_value=MagicMock(
+                status=20,
+                body="# Test Page\nSome content",
+                meta="text/gemini",
+                mime_type="text/gemini",
+                is_success=MagicMock(return_value=True),
+                is_redirect=MagicMock(return_value=False),
+            )
+        )
+
+        app = Astronomo(
+            initial_url="gemini://example.com/test", config_path=temp_config_path
+        )
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            with patch.object(app, "push_screen") as mock_push:
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                # Get the modal that was passed
+                modal = mock_push.call_args[0][0]
+                save_path = modal.save_path
+
+                # Should use default directory
+                assert ".local/share/astronomo/snapshots" in str(save_path)
+
+    @pytest.mark.asyncio
+    async def test_uses_custom_snapshot_directory(self, mock_gemini_client):
+        """Test that custom snapshot directory is used when configured."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            config_path = temp_dir / "config.toml"
+            custom_snapshot_dir = temp_dir / "custom_snapshots"
+
+            # Create config with custom snapshot directory
+            config_path.write_text(
+                f"""\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+
+[snapshots]
+directory = "{custom_snapshot_dir}"
+"""
+            )
+
+            mock_gemini_client.get = AsyncMock(
+                return_value=MagicMock(
+                    status=20,
+                    body="# Test Page\nSome content",
+                    meta="text/gemini",
+                    mime_type="text/gemini",
+                    is_success=MagicMock(return_value=True),
+                    is_redirect=MagicMock(return_value=False),
+                )
+            )
+
+            app = Astronomo(
+                initial_url="gemini://example.com/test", config_path=config_path
+            )
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                with patch.object(app, "push_screen") as mock_push:
+                    app.action_save_snapshot()
+                    await pilot.pause()
+
+                    # Get the modal that was passed
+                    modal = mock_push.call_args[0][0]
+                    save_path = modal.save_path
+
+                    # Should use custom directory
+                    assert str(custom_snapshot_dir) in str(save_path)
+
+    @pytest.mark.asyncio
+    async def test_filename_includes_timestamp(
+        self, mock_gemini_client, temp_config_path
+    ):
+        """Test that filename includes a timestamp."""
+        mock_gemini_client.get = AsyncMock(
+            return_value=MagicMock(
+                status=20,
+                body="# Test Page\nSome content",
+                meta="text/gemini",
+                mime_type="text/gemini",
+                is_success=MagicMock(return_value=True),
+                is_redirect=MagicMock(return_value=False),
+            )
+        )
+
+        app = Astronomo(
+            initial_url="gemini://example.com/test", config_path=temp_config_path
+        )
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            with patch.object(app, "push_screen") as mock_push:
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                # Get the modal that was passed
+                modal = mock_push.call_args[0][0]
+                filename = modal.save_path.name
+
+                # Should have .gmi extension
+                assert filename.endswith(".gmi")
+                # Should include hostname
+                assert "example.com" in filename
+                # Filename should match pattern: hostname_YYYY-MM-DD_HH-MM-SS.gmi
+                # Check for presence of underscore and dashes (timestamp pattern)
+                assert "_" in filename
+                assert "-" in filename
+
+    @pytest.mark.asyncio
+    async def test_saves_file_on_confirmation(self, mock_gemini_client):
+        """Test that file is saved when user confirms."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            config_path = temp_dir / "config.toml"
+            snapshot_dir = temp_dir / "snapshots"
+
+            config_path.write_text(
+                f"""\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+
+[snapshots]
+directory = "{snapshot_dir}"
+"""
+            )
+
+            test_content = "# Test Page\n=> /link Test Link\nSome text content"
+            mock_gemini_client.get = AsyncMock(
+                return_value=MagicMock(
+                    status=20,
+                    body=test_content,
+                    meta="text/gemini",
+                    mime_type="text/gemini",
+                    is_success=MagicMock(return_value=True),
+                    is_redirect=MagicMock(return_value=False),
+                )
+            )
+
+            app = Astronomo(
+                initial_url="gemini://example.com/test", config_path=config_path
+            )
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                # Trigger save action
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                # Confirm the modal (press enter)
+                await pilot.press("enter")
+                await pilot.pause()
+
+                # Check that file was saved
+                saved_files = list(snapshot_dir.glob("*.gmi"))
+                assert len(saved_files) == 1
+
+                # Check content
+                saved_content = saved_files[0].read_text()
+                assert "# Test Page" in saved_content
+                assert "=> /link Test Link" in saved_content
+                assert "Some text content" in saved_content
+
+    @pytest.mark.asyncio
+    async def test_does_not_save_on_cancel(self, mock_gemini_client):
+        """Test that file is not saved when user cancels."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            config_path = temp_dir / "config.toml"
+            snapshot_dir = temp_dir / "snapshots"
+
+            config_path.write_text(
+                f"""\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+
+[snapshots]
+directory = "{snapshot_dir}"
+"""
+            )
+
+            mock_gemini_client.get = AsyncMock(
+                return_value=MagicMock(
+                    status=20,
+                    body="# Test Page\nSome content",
+                    meta="text/gemini",
+                    mime_type="text/gemini",
+                    is_success=MagicMock(return_value=True),
+                    is_redirect=MagicMock(return_value=False),
+                )
+            )
+
+            app = Astronomo(
+                initial_url="gemini://example.com/test", config_path=config_path
+            )
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                # Trigger save action
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                # Cancel the modal (press escape)
+                await pilot.press("escape")
+                await pilot.pause()
+
+                # Check that no file was saved
+                if snapshot_dir.exists():
+                    saved_files = list(snapshot_dir.glob("*.gmi"))
+                    assert len(saved_files) == 0
