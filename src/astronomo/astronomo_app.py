@@ -31,6 +31,7 @@ from astronomo.widgets import (
     IdentityResult,
     IdentitySelectModal,
     InputModal,
+    QuickNavigationModal,
     SessionIdentityModal,
     SessionIdentityResult,
 )
@@ -71,6 +72,7 @@ class Astronomo(App[None]):
         ("ctrl+r", "refresh", "Refresh"),
         ("ctrl+b", "toggle_bookmarks", "Bookmarks"),
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
+        ("ctrl+p", "quick_navigation", "Quick Nav"),
         ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 
@@ -356,6 +358,24 @@ class Astronomo(App[None]):
             self.pop_screen()
         else:
             self.push_screen(SettingsScreen())
+
+    def action_quick_navigation(self) -> None:
+        """Show quick navigation modal for fuzzy finding."""
+
+        def handle_result(url: str | None) -> None:
+            if url is not None:
+                # Navigate to the selected URL
+                url_input = self.query_one("#url-input", Input)
+                url_input.value = url
+                self.get_url(url)
+
+        self.push_screen(
+            QuickNavigationModal(
+                bookmark_manager=self.bookmarks,
+                history_manager=self.history,
+            ),
+            handle_result,
+        )
 
     def _handle_input_request(self, url: str, prompt: str, sensitive: bool) -> None:
         """Handle a status 10/11 input request by showing modal.
