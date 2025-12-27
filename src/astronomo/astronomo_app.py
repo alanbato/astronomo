@@ -27,11 +27,12 @@ from textual.widgets import Button, Footer, Header, Input
 
 from astronomo.bookmarks import Bookmark, BookmarkManager, Folder
 from astronomo.config import ConfigManager
+from astronomo.feeds import FeedManager
 from astronomo.history import HistoryEntry, HistoryManager
 from astronomo.identities import Identity, IdentityManager
 from astronomo.parser import LineType, parse_gemtext
 from astronomo.response_handler import format_response
-from astronomo.screens import SettingsScreen
+from astronomo.screens import FeedsScreen, SettingsScreen
 from astronomo.widgets import (
     AddBookmarkModal,
     BookmarksSidebar,
@@ -86,6 +87,8 @@ class Astronomo(App[None]):
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
         ("ctrl+s", "save_snapshot", "Save Snapshot"),
         ("ctrl+k", "quick_navigation", "Quick Nav"),
+        ("ctrl+j", "open_feeds", "Feeds"),
+        ("ctrl+u", "subscribe_feed", "Subscribe"),
         ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 
@@ -107,6 +110,7 @@ class Astronomo(App[None]):
         self.current_url: str = ""
         self.history = HistoryManager(max_size=100)
         self.bookmarks = BookmarkManager()
+        self.feeds = FeedManager()
         self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url
@@ -936,6 +940,41 @@ class Astronomo(App[None]):
         # Refresh sidebar
         sidebar = self.query_one("#bookmarks-sidebar", BookmarksSidebar)
         sidebar.refresh_tree()
+
+    # --- Feeds ---
+
+    def action_open_feeds(self) -> None:
+        """Open the feeds screen."""
+        self.push_screen(FeedsScreen(self.feeds))
+
+    def action_subscribe_feed(self) -> None:
+        """Subscribe to the current page as a feed."""
+        if not self.current_url:
+            self.notify("No page to subscribe to", severity="warning")
+            return
+
+        # Check if already subscribed
+        if self.feeds.feed_exists(self.current_url):
+            self.notify("Already subscribed to this feed", severity="warning")
+            return
+
+        # Try to get a title from the current page content
+        suggested_title = self._get_page_title() or self.current_url
+
+        from astronomo.widgets.feeds import AddFeedModal
+
+        def handle_result(feed) -> None:
+            if feed:
+                self.notify(f"Subscribed to feed: {feed.title}")
+
+        self.push_screen(
+            AddFeedModal(
+                manager=self.feeds,
+                url=self.current_url,
+                suggested_title=suggested_title,
+            ),
+            handle_result,
+        )
 
 
 if __name__ == "__main__":
