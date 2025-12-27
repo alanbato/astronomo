@@ -144,7 +144,7 @@ class QuickNavigationModal(ModalScreen[str | None]):
         self._all_items = []
 
         # Load bookmarks
-        for bookmark in self.bookmark_manager.get_all_bookmarks():
+        for bookmark in self.bookmark_manager.bookmarks:
             self._all_items.append(
                 NavigationItem(
                     url=bookmark.url,
