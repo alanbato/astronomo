@@ -9,6 +9,7 @@ authors = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "feedparser>=6.0.0",
     "nauyaca>=0.1.0",
     "textual[syntax]>=6.6.0",
     "tomli-w>=1.0.0",
