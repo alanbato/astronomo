@@ -348,13 +348,13 @@ class TestQuickNavigationModal:
         history_manager.push(
             HistoryEntry(
                 url="gemini://history1.com/",
-                content=[GemtextLine(LineType.TEXT, "Test")],
+                content=[GemtextLine(LineType.TEXT, "Test", "Test")],
             )
         )
         history_manager.push(
             HistoryEntry(
                 url="gemini://history2.com/",
-                content=[GemtextLine(LineType.TEXT, "Test")],
+                content=[GemtextLine(LineType.TEXT, "Test", "Test")],
             )
         )
 
