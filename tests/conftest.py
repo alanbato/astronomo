@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from astronomo.bookmarks import BookmarkManager
 from astronomo.config import ConfigManager
+from astronomo.feeds import FeedManager
 from astronomo.identities import Identity, IdentityManager
 from nauyaca.security.certificates import generate_self_signed_cert
 
@@ -295,3 +296,74 @@ def session_choices_file(tmp_path: Path) -> Path:
             f,
         )
     return session_file
+
+
+# --- Feed Fixtures ---
+
+MOCK_RSS_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example Feed</title>
+    <link>gemini://example.com/</link>
+    <description>An example RSS feed</description>
+    <item>
+      <title>First Post</title>
+      <link>gemini://example.com/posts/1</link>
+      <description>This is the first post</description>
+      <pubDate>Mon, 15 Jan 2025 10:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Second Post</title>
+      <link>gemini://example.com/posts/2</link>
+      <description>This is the second post</description>
+      <pubDate>Tue, 16 Jan 2025 12:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>"""
+
+MOCK_ATOM_FEED = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Example Atom Feed</title>
+  <link href="gemini://example.com/"/>
+  <updated>2025-01-16T12:00:00Z</updated>
+  <entry>
+    <title>First Entry</title>
+    <link href="gemini://example.com/entries/1"/>
+    <id>gemini://example.com/entries/1</id>
+    <updated>2025-01-15T10:00:00Z</updated>
+    <summary>First entry summary</summary>
+  </entry>
+  <entry>
+    <title>Second Entry</title>
+    <link href="gemini://example.com/entries/2"/>
+    <id>gemini://example.com/entries/2</id>
+    <updated>2025-01-16T12:00:00Z</updated>
+    <summary>Second entry summary</summary>
+  </entry>
+</feed>"""
+
+
+@pytest.fixture
+def feed_manager():
+    """Create a FeedManager with temporary storage."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield FeedManager(config_dir=Path(tmpdir))
+
+
+@pytest.fixture
+def mock_feed_content():
+    """Factory fixture for creating mock feed content.
+
+    Usage:
+        def test_something(mock_feed_content):
+            rss = mock_feed_content("rss")
+            atom = mock_feed_content("atom")
+    """
+    def _create(feed_type="rss"):
+        if feed_type == "rss":
+            return MOCK_RSS_FEED
+        elif feed_type == "atom":
+            return MOCK_ATOM_FEED
+        else:
+            raise ValueError(f"Unknown feed type: {feed_type}")
+    return _create
