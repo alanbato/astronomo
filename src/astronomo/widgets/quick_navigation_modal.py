@@ -12,8 +12,8 @@ from textual.containers import Container, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, ListView, ListItem
 
-from astronomo.bookmarks import Bookmark, BookmarkManager
-from astronomo.history import HistoryEntry, HistoryManager
+from astronomo.bookmarks import BookmarkManager
+from astronomo.history import HistoryManager
 
 
 @dataclass
@@ -31,6 +31,18 @@ class NavigationItem:
     title: str
     source: str
     timestamp: str = ""
+
+
+class NavigationListItem(ListItem):
+    """ListItem subclass that stores a URL for navigation.
+
+    Attributes:
+        url: The URL to navigate to when this item is selected
+    """
+
+    def __init__(self, *args, url: str, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.url = url
 
 
 class QuickNavigationModal(ModalScreen[str | None]):
@@ -141,31 +153,31 @@ class QuickNavigationModal(ModalScreen[str | None]):
 
     def _load_all_items(self) -> None:
         """Load all bookmarks and history entries into the searchable list."""
-        self._all_items = []
-
         # Load bookmarks
-        for bookmark in self.bookmark_manager.bookmarks:
-            self._all_items.append(
-                NavigationItem(
-                    url=bookmark.url,
-                    title=bookmark.title,
-                    source="bookmark",
-                    timestamp=bookmark.created_at.isoformat(),
-                )
+        self._all_items = [
+            NavigationItem(
+                url=bookmark.url,
+                title=bookmark.title,
+                source="bookmark",
+                timestamp=bookmark.created_at.isoformat(),
             )
+            for bookmark in self.bookmark_manager.bookmarks
+        ]
 
-        # Load history (get all entries from the deque)
-        for entry in self.history_manager._history:
-            # Skip if URL is already in bookmarks to avoid duplicates
-            if not any(item.url == entry.url for item in self._all_items):
-                self._all_items.append(
-                    NavigationItem(
-                        url=entry.url,
-                        title=entry.url,  # History doesn't have titles
-                        source="history",
-                        timestamp=entry.timestamp.isoformat(),
-                    )
-                )
+        # Build set of bookmark URLs for O(1) duplicate detection
+        bookmark_urls = {item.url for item in self._all_items}
+
+        # Load history entries (skip URLs already in bookmarks)
+        self._all_items.extend(
+            NavigationItem(
+                url=entry.url,
+                title=entry.url,  # History doesn't have titles
+                source="history",
+                timestamp=entry.timestamp.isoformat(),
+            )
+            for entry in self.history_manager.get_all_entries()
+            if entry.url not in bookmark_urls
+        )
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Update search results as user types."""
@@ -273,31 +285,26 @@ class QuickNavigationModal(ModalScreen[str | None]):
         acronym = "".join(word[0] for word in words if word)
         return acronym.startswith(query)
 
-    def _create_list_item(self, item: NavigationItem) -> ListItem:
-        """Create a ListItem widget for a navigation item.
+    def _create_list_item(self, item: NavigationItem) -> NavigationListItem:
+        """Create a NavigationListItem widget for a navigation item.
 
         Args:
             item: NavigationItem to display
 
         Returns:
-            Configured ListItem widget
+            Configured NavigationListItem widget with URL stored
         """
-        # Create a vertical container with labels
         container = Vertical(
             Label(item.title, classes="result-title"),
             Label(item.url, classes="result-url"),
             Label(f"[{item.source}]", classes="result-source"),
         )
-
-        list_item = ListItem(container)
-        # Store the URL in the ListItem for easy retrieval
-        list_item.url = item.url  # type: ignore
-        return list_item
+        return NavigationListItem(container, url=item.url)
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle item selection from the list."""
-        if hasattr(event.item, "url"):
-            self.dismiss(event.item.url)  # type: ignore
+        if isinstance(event.item, NavigationListItem):
+            self.dismiss(event.item.url)
 
     def action_cancel(self) -> None:
         """Cancel and close the modal."""
@@ -306,10 +313,9 @@ class QuickNavigationModal(ModalScreen[str | None]):
     def action_select(self) -> None:
         """Select the current item and close the modal."""
         results_list = self.query_one("#results-list", ListView)
-        if results_list.highlighted_child:
-            item = results_list.highlighted_child
-            if hasattr(item, "url"):
-                self.dismiss(item.url)  # type: ignore
+        item = results_list.highlighted_child
+        if isinstance(item, NavigationListItem):
+            self.dismiss(item.url)
 
     def action_cursor_down(self) -> None:
         """Move selection down in the list."""

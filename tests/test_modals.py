@@ -341,7 +341,9 @@ class TestQuickNavigationModal:
         """Create managers with some test data."""
         # Add bookmarks
         bookmark_manager.add_bookmark("gemini://example.com/", "Example Site")
-        bookmark_manager.add_bookmark("gemini://gemini.circumlunar.space/", "Project Gemini")
+        bookmark_manager.add_bookmark(
+            "gemini://gemini.circumlunar.space/", "Project Gemini"
+        )
         bookmark_manager.add_bookmark("gemini://test.org/page", "Test Page")
 
         # Add history entries
@@ -391,8 +393,10 @@ class TestQuickNavigationModal:
 
             # Should filter to only items matching "gemini"
             assert len(modal._filtered_items) > 0
-            assert all("gemini" in item.title.lower() or "gemini" in item.url.lower()
-                      for item in modal._filtered_items)
+            assert all(
+                "gemini" in item.title.lower() or "gemini" in item.url.lower()
+                for item in modal._filtered_items
+            )
 
     @pytest.mark.asyncio
     async def test_escape_cancels(
@@ -431,7 +435,9 @@ class TestQuickNavigationModal:
         assert app._modal_result.startswith("gemini://")
 
     @pytest.mark.asyncio
-    async def test_fuzzy_scoring_prioritizes_title_matches(self, bookmark_manager, history_manager):
+    async def test_fuzzy_scoring_prioritizes_title_matches(
+        self, bookmark_manager, history_manager
+    ):
         """Test that fuzzy scoring prioritizes matches in titles."""
         bookmark_manager.add_bookmark("gemini://example.com/", "Example Site")
         bookmark_manager.add_bookmark("gemini://test.com/example", "Test Site")
@@ -468,6 +474,112 @@ class TestQuickNavigationModal:
             results_list = modal.query_one("#results-list", ListView)
             assert len(results_list.children) > 0
             assert len(modal._filtered_items) <= 20  # Limited to 20
+
+    @pytest.mark.asyncio
+    async def test_arrow_keys_navigate_list(
+        self, bookmark_manager, history_manager, populated_managers
+    ):
+        """Test that up/down arrows navigate the results list."""
+        bm, hm = populated_managers
+        modal = QuickNavigationModal(bm, hm)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            results_list = modal.query_one("#results-list", ListView)
+
+            # First item should be highlighted initially (index 0)
+            initial_index = results_list.index
+            assert initial_index == 0
+
+            # Press down arrow - should move to next item
+            await pilot.press("down")
+            await pilot.pause()
+            assert results_list.index == 1
+
+            # Press down again
+            await pilot.press("down")
+            await pilot.pause()
+            assert results_list.index == 2
+
+            # Press up arrow - should move back
+            await pilot.press("up")
+            await pilot.pause()
+            assert results_list.index == 1
+
+    @pytest.mark.asyncio
+    async def test_acronym_matching(self, bookmark_manager, history_manager):
+        """Test that acronym matching works correctly."""
+        bookmark_manager.add_bookmark(
+            "gemini://example.com/", "Gemini Protocol Specification"
+        )
+        modal = QuickNavigationModal(bookmark_manager, history_manager)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            item = modal._all_items[0]
+
+            # "gps" should match "Gemini Protocol Specification" (acronym)
+            score = modal._fuzzy_score("gps", item)
+            assert score == 200  # Acronym match score
+
+            # "gp" should also match (partial acronym)
+            score = modal._fuzzy_score("gp", item)
+            assert score == 200
+
+            # "xyz" should not match
+            score = modal._fuzzy_score("xyz", item)
+            assert score == 0
+
+    @pytest.mark.asyncio
+    async def test_enter_on_no_results_does_nothing(
+        self, bookmark_manager, history_manager
+    ):
+        """Test that pressing enter with no results doesn't crash or navigate."""
+        bookmark_manager.add_bookmark("gemini://example.com/", "Test")
+        modal = QuickNavigationModal(bookmark_manager, history_manager)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+
+            # Search for something that won't match
+            search_input = modal.query_one("#search-input", Input)
+            search_input.value = "zzzznonexistent"
+            await pilot.pause()
+
+            # Should show no results
+            assert len(modal._filtered_items) == 0
+
+            # Press enter - should not crash, modal should stay open or dismiss with None
+            await pilot.press("enter")
+            await pilot.pause()
+
+        # Modal should dismiss with None (no navigation)
+        assert app._modal_result is None
+
+    @pytest.mark.asyncio
+    async def test_history_duplicates_filtered(self, bookmark_manager, history_manager):
+        """Test that history entries duplicated in bookmarks are filtered."""
+        url = "gemini://example.com/page"
+        bookmark_manager.add_bookmark(url, "Bookmarked Page")
+        history_manager.push(
+            HistoryEntry(
+                url=url,
+                content=[GemtextLine(LineType.TEXT, "Test", "Test")],
+            )
+        )
+
+        modal = QuickNavigationModal(bookmark_manager, history_manager)
+        app = ModalTestApp(modal)
+
+        async with app.run_test() as pilot:
+            await pilot.pause()
+
+            # Should only have 1 item (the bookmark), not 2
+            assert len(modal._all_items) == 1
+            assert modal._all_items[0].source == "bookmark"
 
 
 class TestSaveSnapshotModal:
