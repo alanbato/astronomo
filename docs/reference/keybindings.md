@@ -12,6 +12,7 @@ These shortcuts work anywhere in the application:
 | ++ctrl+r++ | Refresh current page |
 | ++ctrl+b++ | Toggle bookmarks sidebar |
 | ++ctrl+d++ | Add current page to bookmarks |
+| ++ctrl+p++ | Open quick navigation (fuzzy finder) |
 | ++ctrl+comma++ | Open settings |
 
 ## Navigation
@@ -67,6 +68,14 @@ When the bookmarks sidebar is open:
 | ++enter++ | Confirm/submit |
 | ++tab++ | Move to next field |
 | ++shift+tab++ | Move to previous field |
+
+### Quick Navigation Modal
+
+| Key | Action |
+|-----|--------|
+| ++arrow-up++ / ++arrow-down++ | Navigate results |
+| ++enter++ | Open selected item |
+| ++escape++ | Close without selecting |
 
 ## Mouse Actions
 
