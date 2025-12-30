@@ -131,3 +131,11 @@ class HistoryManager:
     def __len__(self) -> int:
         """Return the number of entries in history."""
         return len(self._history)
+
+    def get_all_entries(self) -> list[HistoryEntry]:
+        """Return all history entries as a list.
+
+        Returns:
+            List of all HistoryEntry objects, oldest first
+        """
+        return list(self._history)

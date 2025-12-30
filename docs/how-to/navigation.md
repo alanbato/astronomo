@@ -52,6 +52,30 @@ Click any link to follow it immediately.
 !!! note
     History is preserved within a session. When you go back, your scroll position and selected link are restored.
 
+## Quick Navigation
+
+Press ++ctrl+k++ to open the quick navigation modal - a fuzzy finder for quickly jumping to bookmarks and history entries.
+
+### Using Quick Navigation
+
+1. Press ++ctrl+k++ to open the modal
+2. Start typing to search
+3. Use ++arrow-up++ / ++arrow-down++ to navigate results
+4. Press ++enter++ to open the selected item
+5. Press ++escape++ to cancel
+
+### Search Features
+
+The fuzzy search supports several matching strategies:
+
+- **Title matches** - Highest priority, searches bookmark titles
+- **URL matches** - Searches within URLs
+- **Acronym matches** - Type "gp" to find "Gemini Protocol"
+- **Word boundary matches** - Matches at the start of words
+
+!!! tip
+    When the search field is empty, the modal shows your 20 most recent items sorted by timestamp.
+
 ## Page Scrolling
 
 | Key | Action |
@@ -89,6 +113,7 @@ If a redirect loop is detected or the limit is exceeded, you'll see an error mes
 ## Tips for Efficient Browsing
 
 1. **Use keyboard shortcuts** - Faster than reaching for the mouse
-2. **Set a home page** - Start each session at your favorite capsule
-3. **Bookmark frequently** - Press ++ctrl+d++ to save interesting pages
-4. **Use history** - ++backspace++ is your friend
+2. **Use quick navigation** - Press ++ctrl+k++ to instantly jump to any bookmark or recent page
+3. **Set a home page** - Start each session at your favorite capsule
+4. **Bookmark frequently** - Press ++ctrl+d++ to save interesting pages
+5. **Use history** - ++backspace++ is your friend
