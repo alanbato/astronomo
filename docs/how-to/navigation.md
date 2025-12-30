@@ -54,11 +54,11 @@ Click any link to follow it immediately.
 
 ## Quick Navigation
 
-Press ++ctrl+p++ to open the quick navigation modal - a fuzzy finder for quickly jumping to bookmarks and history entries.
+Press ++ctrl+k++ to open the quick navigation modal - a fuzzy finder for quickly jumping to bookmarks and history entries.
 
 ### Using Quick Navigation
 
-1. Press ++ctrl+p++ to open the modal
+1. Press ++ctrl+k++ to open the modal
 2. Start typing to search
 3. Use ++arrow-up++ / ++arrow-down++ to navigate results
 4. Press ++enter++ to open the selected item
@@ -113,7 +113,7 @@ If a redirect loop is detected or the limit is exceeded, you'll see an error mes
 ## Tips for Efficient Browsing
 
 1. **Use keyboard shortcuts** - Faster than reaching for the mouse
-2. **Use quick navigation** - Press ++ctrl+p++ to instantly jump to any bookmark or recent page
+2. **Use quick navigation** - Press ++ctrl+k++ to instantly jump to any bookmark or recent page
 3. **Set a home page** - Start each session at your favorite capsule
 4. **Bookmark frequently** - Press ++ctrl+d++ to save interesting pages
 5. **Use history** - ++backspace++ is your friend

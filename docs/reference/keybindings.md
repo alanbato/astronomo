@@ -12,7 +12,7 @@ These shortcuts work anywhere in the application:
 | ++ctrl+r++ | Refresh current page |
 | ++ctrl+b++ | Toggle bookmarks sidebar |
 | ++ctrl+d++ | Add current page to bookmarks |
-| ++ctrl+p++ | Open quick navigation (fuzzy finder) |
+| ++ctrl+k++ | Open quick navigation (fuzzy finder) |
 | ++ctrl+comma++ | Open settings |
 
 ## Navigation

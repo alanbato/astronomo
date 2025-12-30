@@ -85,7 +85,7 @@ class Astronomo(App[None]):
         ("ctrl+b", "toggle_bookmarks", "Bookmarks"),
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
         ("ctrl+s", "save_snapshot", "Save Snapshot"),
-        ("ctrl+p", "quick_navigation", "Quick Nav"),
+        ("ctrl+k", "quick_navigation", "Quick Nav"),
         ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 

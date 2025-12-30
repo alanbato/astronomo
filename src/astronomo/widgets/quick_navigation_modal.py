@@ -138,7 +138,7 @@ class QuickNavigationModal(ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
         with Container():
-            yield Label("Quick Navigation (Ctrl+P)", classes="modal-title")
+            yield Label("Quick Navigation (Ctrl+K)", classes="modal-title")
             yield Input(
                 placeholder="Type to search bookmarks and history...",
                 id="search-input",
