@@ -226,8 +226,10 @@ class InputModal(ModalScreen[str | None]):
         # Get value based on widget type
         if isinstance(input_field, Input):
             value = input_field.value
-        else:  # TextArea
+        elif isinstance(input_field, TextArea):
             value = input_field.text
+        else:
+            return  # Unsupported widget type
 
         # Check if URL would be too long
         if self._calculate_remaining_bytes(value) < 0:

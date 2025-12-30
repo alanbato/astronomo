@@ -5,6 +5,7 @@ bookmarks and history entries.
 """
 
 from dataclasses import dataclass
+from typing import Literal
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -14,6 +15,9 @@ from textual.widgets import Input, Label, ListView, ListItem
 
 from astronomo.bookmarks import BookmarkManager
 from astronomo.history import HistoryManager
+
+# Type alias for navigation item sources
+NavigationSource = Literal["bookmark", "history"]
 
 
 @dataclass
@@ -29,7 +33,7 @@ class NavigationItem:
 
     url: str
     title: str
-    source: str
+    source: NavigationSource
     timestamp: str = ""
 
 
@@ -119,8 +123,8 @@ class QuickNavigationModal(ModalScreen[str | None]):
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=False, priority=True),
         Binding("enter", "select", "Select", show=False, priority=True),
-        Binding("down", "cursor_down", "Down", show=False),
-        Binding("up", "cursor_up", "Up", show=False),
+        Binding("down", "cursor_down", "Down", show=False, priority=True),
+        Binding("up", "cursor_up", "Up", show=False, priority=True),
     ]
 
     def __init__(
@@ -153,31 +157,42 @@ class QuickNavigationModal(ModalScreen[str | None]):
 
     def _load_all_items(self) -> None:
         """Load all bookmarks and history entries into the searchable list."""
-        # Load bookmarks
-        self._all_items = [
-            NavigationItem(
-                url=bookmark.url,
-                title=bookmark.title,
-                source="bookmark",
-                timestamp=bookmark.created_at.isoformat(),
-            )
-            for bookmark in self.bookmark_manager.bookmarks
-        ]
+        self._all_items = []
+
+        # Load bookmarks with error handling for corrupted data
+        for bookmark in self.bookmark_manager.bookmarks:
+            try:
+                self._all_items.append(
+                    NavigationItem(
+                        url=bookmark.url,
+                        title=bookmark.title,
+                        source="bookmark",
+                        timestamp=bookmark.created_at.isoformat(),
+                    )
+                )
+            except (AttributeError, TypeError):
+                # Skip corrupted bookmark entries
+                continue
 
         # Build set of bookmark URLs for O(1) duplicate detection
         bookmark_urls = {item.url for item in self._all_items}
 
         # Load history entries (skip URLs already in bookmarks)
-        self._all_items.extend(
-            NavigationItem(
-                url=entry.url,
-                title=entry.url,  # History doesn't have titles
-                source="history",
-                timestamp=entry.timestamp.isoformat(),
-            )
-            for entry in self.history_manager.get_all_entries()
-            if entry.url not in bookmark_urls
-        )
+        for entry in self.history_manager.get_all_entries():
+            if entry.url in bookmark_urls:
+                continue
+            try:
+                self._all_items.append(
+                    NavigationItem(
+                        url=entry.url,
+                        title=entry.url,  # History doesn't have titles
+                        source="history",
+                        timestamp=entry.timestamp.isoformat(),
+                    )
+                )
+            except (AttributeError, TypeError):
+                # Skip corrupted history entries
+                continue
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Update search results as user types."""
@@ -316,6 +331,9 @@ class QuickNavigationModal(ModalScreen[str | None]):
         item = results_list.highlighted_child
         if isinstance(item, NavigationListItem):
             self.dismiss(item.url)
+        else:
+            # No valid item selected (e.g., "No results" message) - dismiss gracefully
+            self.dismiss(None)
 
     def action_cursor_down(self) -> None:
         """Move selection down in the list."""
