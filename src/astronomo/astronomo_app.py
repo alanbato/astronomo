@@ -402,7 +402,11 @@ class Astronomo(App[None]):
             self.push_screen(SettingsScreen())
 
     def action_quick_navigation(self) -> None:
-        """Show quick navigation modal for fuzzy finding."""
+        """Toggle quick navigation modal for fuzzy finding."""
+        # If already open, close it
+        if isinstance(self.screen, QuickNavigationModal):
+            self.pop_screen()
+            return
 
         def handle_result(url: str | None) -> None:
             if url is not None:

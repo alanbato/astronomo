@@ -77,24 +77,30 @@ class QuickNavigationModal(ModalScreen[str | None]):
         content-align: center middle;
         background: $primary;
         color: $text;
-        padding: 1;
+        height: 3;
     }
 
-    QuickNavigationModal Input {
+    QuickNavigationModal #search-input {
         width: 100%;
-        border: none;
-        padding: 1 2;
+        height: 3;
+        border: tall $primary;
+        margin: 0 1;
     }
 
     QuickNavigationModal ListView {
         width: 100%;
         height: 1fr;
-        padding: 0;
+        margin: 0 1;
     }
 
     QuickNavigationModal ListItem {
-        padding: 0 2;
+        padding: 0 1;
         height: auto;
+    }
+
+    QuickNavigationModal .result-item {
+        height: auto;
+        padding: 0;
     }
 
     QuickNavigationModal .result-title {
@@ -113,15 +119,17 @@ class QuickNavigationModal(ModalScreen[str | None]):
 
     QuickNavigationModal .no-results {
         width: 100%;
-        height: 100%;
+        height: auto;
         content-align: center middle;
         color: $text-muted;
         text-style: italic;
+        padding: 2;
     }
     """
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", show=False, priority=True),
+        Binding("ctrl+k", "cancel", "Close", show=False, priority=True),
         Binding("enter", "select", "Select", show=False, priority=True),
         Binding("down", "cursor_down", "Down", show=False, priority=True),
         Binding("up", "cursor_up", "Up", show=False, priority=True),
@@ -313,6 +321,7 @@ class QuickNavigationModal(ModalScreen[str | None]):
             Label(item.title, classes="result-title"),
             Label(item.url, classes="result-url"),
             Label(f"[{item.source}]", classes="result-source"),
+            classes="result-item",
         )
         return NavigationListItem(container, url=item.url)
 
