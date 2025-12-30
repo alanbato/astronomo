@@ -5,6 +5,7 @@ read/unread tracking, and TOML persistence.
 """
 
 import hashlib
+import logging
 import tomllib
 import uuid
 from dataclasses import dataclass, field
@@ -13,6 +14,8 @@ from pathlib import Path
 from typing import Self
 
 import tomli_w
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -189,16 +192,33 @@ class FeedManager:
 
             self.folders = [FeedFolder.from_dict(f) for f in data.get("folders", [])]
             self.feeds = [Feed.from_dict(f) for f in data.get("feeds", [])]
-            self.read_items = [ReadItem.from_dict(r) for r in data.get("read_items", [])]
-        except (tomllib.TOMLDecodeError, KeyError, ValueError):
-            # If file is corrupted, start fresh but don't overwrite
+            self.read_items = [
+                ReadItem.from_dict(r) for r in data.get("read_items", [])
+            ]
+        except tomllib.TOMLDecodeError as e:
+            # TOML syntax is invalid
+            logger.error("Failed to parse feeds.toml: %s", e)
+            self.feeds = []
+            self.folders = []
+            self.read_items = []
+        except (KeyError, ValueError, TypeError) as e:
+            # Data structure is invalid
+            logger.error("Invalid data in feeds.toml: %s", e)
             self.feeds = []
             self.folders = []
             self.read_items = []
 
     def _save(self) -> None:
-        """Save feeds to TOML file."""
-        self._ensure_config_dir()
+        """Save feeds to TOML file.
+
+        Raises:
+            OSError: If the file cannot be written (disk full, permissions, etc.)
+        """
+        try:
+            self._ensure_config_dir()
+        except OSError as e:
+            logger.error("Cannot create config directory: %s", e)
+            raise
 
         data = {
             "version": self.VERSION,
@@ -207,14 +227,16 @@ class FeedManager:
             "read_items": [r.to_dict() for r in self.read_items],
         }
 
-        with open(self.feeds_file, "wb") as f:
-            tomli_w.dump(data, f)
+        try:
+            with open(self.feeds_file, "wb") as f:
+                tomli_w.dump(data, f)
+        except OSError as e:
+            logger.error("Cannot save feeds file: %s", e)
+            raise
 
     # Feed operations
 
-    def add_feed(
-        self, url: str, title: str, folder_id: str | None = None
-    ) -> Feed:
+    def add_feed(self, url: str, title: str, folder_id: str | None = None) -> Feed:
         """Add a new feed subscription.
 
         Args:
@@ -432,7 +454,9 @@ class FeedManager:
         item_id = self.generate_item_id(feed_id, link, published)
         return any(r.item_id == item_id for r in self.read_items)
 
-    def get_unread_count(self, feed_id: str, items: list[tuple[str, datetime | None]]) -> int:
+    def get_unread_count(
+        self, feed_id: str, items: list[tuple[str, datetime | None]]
+    ) -> int:
         """Get the number of unread items in a feed.
 
         Args:
@@ -448,7 +472,9 @@ class FeedManager:
                 unread += 1
         return unread
 
-    def mark_all_as_read(self, feed_id: str, items: list[tuple[str, datetime | None]]) -> None:
+    def mark_all_as_read(
+        self, feed_id: str, items: list[tuple[str, datetime | None]]
+    ) -> None:
         """Mark all items in a feed as read.
 
         Args:

@@ -4,6 +4,7 @@ Provides a full-screen interface for managing and viewing RSS/Atom feeds
 with folder organization, read/unread tracking, and feed item viewing.
 """
 
+import logging
 from typing import TYPE_CHECKING
 
 from textual import work
@@ -21,6 +22,7 @@ from astronomo.opml import export_opml, import_opml
 from astronomo.widgets.feeds import (
     AddFeedFolderModal,
     AddFeedModal,
+    ConfirmDeleteFeedModal,
     EditFeedFolderModal,
     EditFeedModal,
     OpmlExportModal,
@@ -29,6 +31,8 @@ from astronomo.widgets.feeds import (
 
 if TYPE_CHECKING:
     from astronomo.astronomo_app import Astronomo
+
+logger = logging.getLogger(__name__)
 
 
 class FeedFolderWidget(Static):
@@ -263,7 +267,7 @@ class FeedListPanel(VerticalScroll):
         # Add title
         title_text = "Feeds"
         if self._search_query:
-            title_text += f" (filtered)"
+            title_text += " (filtered)"
         self.mount(Label(title_text, classes="panel-title"))
 
         # Get folders and root feeds
@@ -338,7 +342,9 @@ class FeedListPanel(VerticalScroll):
         if not self._items:
             return
 
-        self.selected_index = max(0, min(len(self._items) - 1, self.selected_index + delta))
+        self.selected_index = max(
+            0, min(len(self._items) - 1, self.selected_index + delta)
+        )
         self._update_selection()
 
     def toggle_folder(self) -> None:
@@ -464,7 +470,9 @@ class FeedItemsPanel(VerticalScroll):
             with self.app.query_one(FeedItemsPanel):
                 info_container = Container(classes="feed-info")
                 self.mount(info_container)
-                info_container.mount(Label(feed_data.description, classes="feed-description"))
+                info_container.mount(
+                    Label(feed_data.description, classes="feed-description")
+                )
 
         # Feed items
         if not feed_data.items:
@@ -600,7 +608,9 @@ class FeedsScreen(Screen):
             feed_list = self.query_one("#feed-list", FeedListPanel)
             feed_list.refresh_list(search_query=search_query)
 
-    def on_feed_list_panel_feed_selected(self, message: FeedListPanel.FeedSelected) -> None:
+    def on_feed_list_panel_feed_selected(
+        self, message: FeedListPanel.FeedSelected
+    ) -> None:
         """Handle feed selection from the list panel."""
         self._load_feed(message.feed)
 
@@ -627,6 +637,7 @@ class FeedsScreen(Screen):
         # Update last_fetched timestamp
         if not feed_data.error:
             from datetime import datetime
+
             self.manager.update_feed(feed.id, last_fetched=datetime.now())
 
         # Display results
@@ -665,7 +676,7 @@ class FeedsScreen(Screen):
         # Open the link in the main browser if it's a Gemini URL
         if message.item.link.startswith("gemini://"):
             self.dismiss()
-            app.go_to_url(message.item.link)
+            app.get_url(message.item.link)
 
     # Actions
 
@@ -725,6 +736,7 @@ class FeedsScreen(Screen):
                 feed_list = self.query_one("#feed-list", FeedListPanel)
                 feed_list.refresh_list()
             except Exception as e:
+                logger.exception("OPML import failed for %s", path)
                 self.app.notify(f"Import failed: {e}", severity="error", timeout=5)
 
     def action_export_opml(self) -> None:
@@ -738,6 +750,7 @@ class FeedsScreen(Screen):
                 export_opml(self.manager, path)
                 self.app.notify(f"Feeds exported to {path}", timeout=3)
             except Exception as e:
+                logger.exception("OPML export failed for %s", path)
                 self.app.notify(f"Export failed: {e}", severity="error", timeout=5)
 
     def action_cursor_up(self) -> None:
@@ -761,28 +774,26 @@ class FeedsScreen(Screen):
         feed_list.toggle_folder()
 
     def action_delete_item(self) -> None:
-        """Delete the selected item."""
+        """Delete the selected item after confirmation."""
         feed_list = self.query_one("#feed-list", FeedListPanel)
         item = feed_list.get_selected_item()
 
-        if isinstance(item, Feed):
-            # Confirm and delete feed
-            if self.manager.remove_feed(item.id):
-                self.app.notify(f"Deleted feed: {item.title}")
-                feed_list.refresh_list()
-                items_panel = self.query_one("#feed-items", FeedItemsPanel)
-                items_panel.show_placeholder()
-        elif isinstance(item, FeedFolder):
-            # Confirm and delete folder
-            feeds_in_folder = self.manager.get_feeds_in_folder(item.id)
-            if feeds_in_folder:
-                self.app.notify(
-                    f"Folder contains {len(feeds_in_folder)} feed(s). Feeds moved to root.",
-                    timeout=3,
-                )
-            if self.manager.remove_folder(item.id):
-                self.app.notify(f"Deleted folder: {item.name}")
-                feed_list.refresh_list()
+        if item is None:
+            return
+
+        self.app.push_screen(
+            ConfirmDeleteFeedModal(self.manager, item),
+            self._on_delete_confirmed,
+        )
+
+    def _on_delete_confirmed(self, deleted: bool | None) -> None:
+        """Handle deletion confirmation result."""
+        if deleted:
+            feed_list = self.query_one("#feed-list", FeedListPanel)
+            feed_list.refresh_list()
+            items_panel = self.query_one("#feed-items", FeedItemsPanel)
+            items_panel.show_placeholder()
+            self.app.notify("Item deleted")
 
     def action_edit_item(self) -> None:
         """Edit the selected item."""
@@ -800,14 +811,14 @@ class FeedsScreen(Screen):
                 self._on_folder_edited,
             )
 
-    def _on_feed_edited(self, updated: bool) -> None:
+    def _on_feed_edited(self, updated: bool | None) -> None:
         """Handle feed edited from modal."""
         if updated:
             self.app.notify("Feed updated")
             feed_list = self.query_one("#feed-list", FeedListPanel)
             feed_list.refresh_list()
 
-    def _on_folder_edited(self, updated: bool) -> None:
+    def _on_folder_edited(self, updated: bool | None) -> None:
         """Handle folder edited from modal."""
         if updated:
             self.app.notify("Folder updated")

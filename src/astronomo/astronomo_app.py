@@ -88,7 +88,6 @@ class Astronomo(App[None]):
         ("ctrl+s", "save_snapshot", "Save Snapshot"),
         ("ctrl+k", "quick_navigation", "Quick Nav"),
         ("ctrl+j", "open_feeds", "Feeds"),
-        ("ctrl+u", "subscribe_feed", "Subscribe"),
         ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 
@@ -946,35 +945,6 @@ class Astronomo(App[None]):
     def action_open_feeds(self) -> None:
         """Open the feeds screen."""
         self.push_screen(FeedsScreen(self.feeds))
-
-    def action_subscribe_feed(self) -> None:
-        """Subscribe to the current page as a feed."""
-        if not self.current_url:
-            self.notify("No page to subscribe to", severity="warning")
-            return
-
-        # Check if already subscribed
-        if self.feeds.feed_exists(self.current_url):
-            self.notify("Already subscribed to this feed", severity="warning")
-            return
-
-        # Try to get a title from the current page content
-        suggested_title = self._get_page_title() or self.current_url
-
-        from astronomo.widgets.feeds import AddFeedModal
-
-        def handle_result(feed) -> None:
-            if feed:
-                self.notify(f"Subscribed to feed: {feed.title}")
-
-        self.push_screen(
-            AddFeedModal(
-                manager=self.feeds,
-                url=self.current_url,
-                suggested_title=suggested_title,
-            ),
-            handle_result,
-        )
 
 
 if __name__ == "__main__":

@@ -3,12 +3,17 @@
 This module handles fetching and parsing RSS/Atom feeds via the Gemini protocol.
 """
 
+import asyncio
+import logging
+import ssl
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 import feedparser
 from nauyaca.client import GeminiClient
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -158,5 +163,13 @@ async def fetch_feed(
             items=items,
         )
 
+    except asyncio.TimeoutError:
+        return FeedData(error=f"Request timed out for {url}")
+    except ssl.SSLError as e:
+        return FeedData(error=f"SSL/TLS error: {e}")
+    except (ConnectionError, OSError) as e:
+        return FeedData(error=f"Network error: {e}")
     except Exception as e:
+        # Log unexpected errors for debugging
+        logger.exception("Unexpected error fetching feed from %s", url)
         return FeedData(error=f"Error fetching feed: {e}")
