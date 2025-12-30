@@ -10,6 +10,7 @@ from astronomo.widgets.identity_error_modal import (
 )
 from astronomo.widgets.identity_select_modal import IdentityResult, IdentitySelectModal
 from astronomo.widgets.input_modal import InputModal
+from astronomo.widgets.save_snapshot_modal import SaveSnapshotModal
 from astronomo.widgets.session_identity_modal import (
     SessionIdentityModal,
     SessionIdentityResult,
@@ -25,6 +26,7 @@ __all__ = [
     "IdentityResult",
     "IdentitySelectModal",
     "InputModal",
+    "SaveSnapshotModal",
     "SessionIdentityModal",
     "SessionIdentityResult",
 ]

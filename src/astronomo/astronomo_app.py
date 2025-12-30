@@ -1,3 +1,5 @@
+import re
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import (
     quote,
@@ -31,6 +33,7 @@ from astronomo.widgets import (
     IdentityResult,
     IdentitySelectModal,
     InputModal,
+    SaveSnapshotModal,
     SessionIdentityModal,
     SessionIdentityResult,
 )
@@ -71,6 +74,7 @@ class Astronomo(App[None]):
         ("ctrl+r", "refresh", "Refresh"),
         ("ctrl+b", "toggle_bookmarks", "Bookmarks"),
         ("ctrl+d", "add_bookmark", "Add Bookmark"),
+        ("ctrl+s", "save_snapshot", "Save Snapshot"),
         ("ctrl+comma", "toggle_settings", "Settings"),
     ]
 
@@ -678,6 +682,83 @@ class Astronomo(App[None]):
             if line.line_type == LineType.HEADING_1:
                 return line.content
         return None
+
+    def action_save_snapshot(self) -> None:
+        """Save a snapshot of the current page."""
+        if not self.current_url:
+            self.notify("No page loaded. Navigate to a page first.", severity="warning")
+            return
+
+        # Get the viewer to access current content
+        viewer = self.query_one("#content", GemtextViewer)
+        if not viewer.lines:
+            self.notify("No content to save. The page is empty.", severity="warning")
+            return
+
+        # Determine snapshot directory (config or default)
+        snapshot_dir_str = self.config_manager.snapshots_directory
+        if snapshot_dir_str:
+            snapshot_dir = Path(snapshot_dir_str).expanduser()
+        else:
+            # Default: ~/.local/share/astronomo/snapshots
+            snapshot_dir = Path.home() / ".local" / "share" / "astronomo" / "snapshots"
+
+        # Ensure directory exists
+        try:
+            snapshot_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            self.notify(
+                f"Cannot create directory: {snapshot_dir}. Permission denied.",
+                severity="error",
+            )
+            return
+        except OSError as e:
+            self.notify(f"Cannot create directory: {e}", severity="error")
+            return
+
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        # Try to create a meaningful filename from the URL
+        parsed = urlparse(self.current_url)
+        hostname = parsed.netloc or "page"
+        # Clean up hostname to be filesystem-safe: keep only alphanumeric, dots, hyphens, underscores
+        hostname = re.sub(r"[^\w.-]", "_", hostname)
+        # Prevent directory traversal
+        hostname = hostname.replace("..", "__")
+        # Limit length to reasonable filesystem bound
+        hostname = hostname[:100]
+
+        filename = f"{hostname}_{timestamp}.gmi"
+        save_path = snapshot_dir / filename
+
+        def handle_result(confirmed: bool | None) -> None:
+            if confirmed:
+                try:
+                    # Reconstruct the original gemtext from parsed lines
+                    gemtext_lines = [line.raw for line in viewer.lines]
+                    content = "\n".join(gemtext_lines)
+
+                    # Write to file
+                    save_path.write_text(content, encoding="utf-8")
+
+                    self.notify(
+                        f"Saved to {save_path.name}",
+                        title="Snapshot Saved",
+                        severity="information",
+                    )
+                except PermissionError:
+                    self.notify(
+                        f"Cannot write to {snapshot_dir}. Permission denied.",
+                        severity="error",
+                    )
+                except OSError as e:
+                    self.notify(f"Failed to save snapshot: {e}", severity="error")
+
+        self.push_screen(
+            SaveSnapshotModal(url=self.current_url, save_path=save_path),
+            handle_result,
+        )
 
     def on_bookmarks_sidebar_bookmark_selected(
         self, message: BookmarksSidebar.BookmarkSelected
