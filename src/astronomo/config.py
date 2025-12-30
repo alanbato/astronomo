@@ -154,10 +154,19 @@ class SnapshotsConfig:
     """Snapshot settings.
 
     Attributes:
-        directory: Directory where page snapshots are saved (None for default)
+        directory: Directory where page snapshots are saved.
+                   Must be a non-empty string or None for default.
+                   Empty strings and whitespace-only strings are normalized to None.
+                   The default location is ~/.local/share/astronomo/snapshots
     """
 
     directory: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate and normalize directory after construction."""
+        if self.directory is not None:
+            if not isinstance(self.directory, str) or not self.directory.strip():
+                self.directory = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""

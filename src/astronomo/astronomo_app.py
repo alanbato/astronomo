@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import (
@@ -685,11 +686,13 @@ class Astronomo(App[None]):
     def action_save_snapshot(self) -> None:
         """Save a snapshot of the current page."""
         if not self.current_url:
+            self.notify("No page loaded. Navigate to a page first.", severity="warning")
             return
 
         # Get the viewer to access current content
         viewer = self.query_one("#content", GemtextViewer)
         if not viewer.lines:
+            self.notify("No content to save. The page is empty.", severity="warning")
             return
 
         # Determine snapshot directory (config or default)
@@ -701,7 +704,17 @@ class Astronomo(App[None]):
             snapshot_dir = Path.home() / ".local" / "share" / "astronomo" / "snapshots"
 
         # Ensure directory exists
-        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            snapshot_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            self.notify(
+                f"Cannot create directory: {snapshot_dir}. Permission denied.",
+                severity="error",
+            )
+            return
+        except OSError as e:
+            self.notify(f"Cannot create directory: {e}", severity="error")
+            return
 
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -709,13 +722,17 @@ class Astronomo(App[None]):
         # Try to create a meaningful filename from the URL
         parsed = urlparse(self.current_url)
         hostname = parsed.netloc or "page"
-        # Clean up hostname to be filesystem-safe
-        hostname = hostname.replace(":", "_").replace("/", "_")
+        # Clean up hostname to be filesystem-safe: keep only alphanumeric, dots, hyphens, underscores
+        hostname = re.sub(r"[^\w.-]", "_", hostname)
+        # Prevent directory traversal
+        hostname = hostname.replace("..", "__")
+        # Limit length to reasonable filesystem bound
+        hostname = hostname[:100]
 
         filename = f"{hostname}_{timestamp}.gmi"
         save_path = snapshot_dir / filename
 
-        def handle_result(confirmed: bool) -> None:
+        def handle_result(confirmed: bool | None) -> None:
             if confirmed:
                 try:
                     # Reconstruct the original gemtext from parsed lines
@@ -725,11 +742,18 @@ class Astronomo(App[None]):
                     # Write to file
                     save_path.write_text(content, encoding="utf-8")
 
-                    # Could show a success notification here if desired
-                except Exception as e:
-                    # Handle errors gracefully
-                    # Could show an error notification here
-                    pass
+                    self.notify(
+                        f"Saved to {save_path.name}",
+                        title="Snapshot Saved",
+                        severity="information",
+                    )
+                except PermissionError:
+                    self.notify(
+                        f"Cannot write to {snapshot_dir}. Permission denied.",
+                        severity="error",
+                    )
+                except OSError as e:
+                    self.notify(f"Failed to save snapshot: {e}", severity="error")
 
         self.push_screen(
             SaveSnapshotModal(url=self.current_url, save_path=save_path),

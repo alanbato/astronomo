@@ -270,9 +270,7 @@ class TestSaveSnapshot:
                 mock_push.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_shows_confirmation_modal(
-        self, mock_gemini_client, temp_config_path
-    ):
+    async def test_shows_confirmation_modal(self, mock_gemini_client, temp_config_path):
         """Test that save snapshot shows confirmation modal."""
         mock_gemini_client.get = AsyncMock(
             return_value=MagicMock(
@@ -539,3 +537,224 @@ directory = "{snapshot_dir}"
                 if snapshot_dir.exists():
                     saved_files = list(snapshot_dir.glob("*.gmi"))
                     assert len(saved_files) == 0
+
+    @pytest.mark.asyncio
+    async def test_shows_notification_without_url(
+        self, mock_gemini_client, temp_config_path
+    ):
+        """Test that a warning notification is shown when no URL is loaded."""
+        app = Astronomo(config_path=temp_config_path)
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            with patch.object(app, "notify") as mock_notify:
+                app.action_save_snapshot()
+                await pilot.pause()
+
+                mock_notify.assert_called_once()
+                call_args = mock_notify.call_args
+                assert "No page loaded" in call_args[0][0]
+                assert call_args[1]["severity"] == "warning"
+
+    @pytest.mark.asyncio
+    async def test_sanitizes_hostname_with_port(self, mock_gemini_client):
+        """Test that hostname with port number generates valid filename."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            config_path = temp_dir / "config.toml"
+            snapshot_dir = temp_dir / "snapshots"
+
+            config_path.write_text(
+                f"""\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+
+[snapshots]
+directory = "{snapshot_dir}"
+"""
+            )
+
+            mock_gemini_client.get = AsyncMock(
+                return_value=MagicMock(
+                    status=20,
+                    body="# Test Page\nSome content",
+                    meta="text/gemini",
+                    mime_type="text/gemini",
+                    is_success=MagicMock(return_value=True),
+                    is_redirect=MagicMock(return_value=False),
+                )
+            )
+
+            # Use URL with non-standard port
+            app = Astronomo(
+                initial_url="gemini://example.com:1965/test", config_path=config_path
+            )
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                with patch.object(app, "push_screen") as mock_push:
+                    app.action_save_snapshot()
+                    await pilot.pause()
+
+                    modal = mock_push.call_args[0][0]
+                    filename = modal.save_path.name
+
+                    # Port colon should be replaced with underscore
+                    assert "example.com_1965" in filename
+                    # Should not contain colon
+                    assert ":" not in filename
+
+    @pytest.mark.asyncio
+    async def test_handles_directory_creation_permission_error(
+        self, mock_gemini_client, temp_config_path
+    ):
+        """Test that directory creation permission errors show notification."""
+        mock_gemini_client.get = AsyncMock(
+            return_value=MagicMock(
+                status=20,
+                body="# Test Page\nSome content",
+                meta="text/gemini",
+                mime_type="text/gemini",
+                is_success=MagicMock(return_value=True),
+                is_redirect=MagicMock(return_value=False),
+            )
+        )
+
+        app = Astronomo(
+            initial_url="gemini://example.com/test", config_path=temp_config_path
+        )
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            with patch("pathlib.Path.mkdir") as mock_mkdir:
+                mock_mkdir.side_effect = PermissionError("Access denied")
+
+                with patch.object(app, "notify") as mock_notify:
+                    app.action_save_snapshot()
+                    await pilot.pause()
+
+                    mock_notify.assert_called_once()
+                    call_args = mock_notify.call_args
+                    assert "Permission denied" in call_args[0][0]
+                    assert call_args[1]["severity"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_shows_success_notification_on_save(self, mock_gemini_client):
+        """Test that success notification is shown when file is saved."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            config_path = temp_dir / "config.toml"
+            snapshot_dir = temp_dir / "snapshots"
+
+            config_path.write_text(
+                f"""\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+
+[snapshots]
+directory = "{snapshot_dir}"
+"""
+            )
+
+            mock_gemini_client.get = AsyncMock(
+                return_value=MagicMock(
+                    status=20,
+                    body="# Test Page\nSome content",
+                    meta="text/gemini",
+                    mime_type="text/gemini",
+                    is_success=MagicMock(return_value=True),
+                    is_redirect=MagicMock(return_value=False),
+                )
+            )
+
+            app = Astronomo(
+                initial_url="gemini://example.com/test", config_path=config_path
+            )
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                with patch.object(app, "notify") as mock_notify:
+                    # Trigger save action
+                    app.action_save_snapshot()
+                    await pilot.pause()
+
+                    # Confirm the modal (press enter)
+                    await pilot.press("enter")
+                    await pilot.pause()
+
+                    # Should show success notification
+                    mock_notify.assert_called_once()
+                    call_args = mock_notify.call_args
+                    assert "Saved to" in call_args[0][0]
+                    assert call_args[1]["severity"] == "information"
+
+    @pytest.mark.asyncio
+    async def test_handles_file_write_permission_error(self, mock_gemini_client):
+        """Test that file write permission errors show notification."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_dir = Path(tmpdir)
+            config_path = temp_dir / "config.toml"
+            snapshot_dir = temp_dir / "snapshots"
+            snapshot_dir.mkdir()
+
+            config_path.write_text(
+                f"""\
+[appearance]
+theme = "textual-dark"
+
+[browsing]
+timeout = 30
+max_redirects = 5
+
+[snapshots]
+directory = "{snapshot_dir}"
+"""
+            )
+
+            mock_gemini_client.get = AsyncMock(
+                return_value=MagicMock(
+                    status=20,
+                    body="# Test Page\nSome content",
+                    meta="text/gemini",
+                    mime_type="text/gemini",
+                    is_success=MagicMock(return_value=True),
+                    is_redirect=MagicMock(return_value=False),
+                )
+            )
+
+            app = Astronomo(
+                initial_url="gemini://example.com/test", config_path=config_path
+            )
+
+            async with app.run_test(size=(80, 24)) as pilot:
+                await pilot.pause()
+
+                with patch("pathlib.Path.write_text") as mock_write:
+                    mock_write.side_effect = PermissionError("Cannot write")
+
+                    with patch.object(app, "notify") as mock_notify:
+                        # Trigger save action
+                        app.action_save_snapshot()
+                        await pilot.pause()
+
+                        # Confirm the modal (press enter)
+                        await pilot.press("enter")
+                        await pilot.pause()
+
+                        # Should show error notification
+                        mock_notify.assert_called_once()
+                        call_args = mock_notify.call_args
+                        assert "Permission denied" in call_args[0][0]
+                        assert call_args[1]["severity"] == "error"

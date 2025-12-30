@@ -187,6 +187,22 @@ class TestSnapshotsConfig:
         config = SnapshotsConfig.from_dict({})
         assert config.directory is None
 
+    def test_post_init_normalizes_empty_string(self) -> None:
+        """Test that __post_init__ normalizes empty string to None."""
+        # Direct construction with empty string should be normalized
+        config = SnapshotsConfig(directory="")
+        assert config.directory is None
+
+    def test_post_init_normalizes_whitespace(self) -> None:
+        """Test that __post_init__ normalizes whitespace-only to None."""
+        config = SnapshotsConfig(directory="   ")
+        assert config.directory is None
+
+    def test_post_init_preserves_valid_directory(self) -> None:
+        """Test that __post_init__ preserves valid directory paths."""
+        config = SnapshotsConfig(directory="/valid/path")
+        assert config.directory == "/valid/path"
+
 
 class TestConfig:
     """Tests for the root Config dataclass."""
