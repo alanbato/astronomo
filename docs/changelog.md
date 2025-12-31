@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Quick navigation modal (Ctrl+P): Keyboard-driven fuzzy finder for quickly jumping to bookmarks and history entries
+- Quick navigation modal (Ctrl+K): Keyboard-driven fuzzy finder for quickly jumping to bookmarks and history entries
 - `get_all_entries()` method in `HistoryManager` to retrieve all history entries
 - Identity prompt behavior setting: control when the identity selection modal appears via Settings > Browsing. Options are "Every time" (always prompt), "When ambiguous" (auto-select if one match, prompt if multiple), and "Remember choice" (never prompt, reuse previous selection). Session identity choices are now persisted to disk and restored on app restart
 - Emoji display mode setting: toggle between showing Unicode emoji or text descriptions (e.g., `(grinning face)`) in Settings > Appearance
@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better hostname sanitization for snapshot filenames (prevents filesystem issues)
 - Import identities from Lagrange browser: Settings > Certificates now includes an "Import from Lagrange" button that discovers and imports existing Lagrange client certificates
 - Import custom certificates: Settings > Certificates now includes an "Import Certificate" button to import existing certificate/key files. Supports both separate cert+key files and combined PEM files containing both certificate and private key. Includes a file browser for easy selection
+- RSS/Atom feed subscription and management (Ctrl+J to open feeds screen)
+- Feed folder organization for organizing subscriptions
+- Read/unread tracking for feed items
+- OPML import/export for feed portability (Ctrl+I/Ctrl+E in feeds screen)
+- Search/filter functionality for feeds
+- Feed refresh on-demand
 
 ### Changed
 - Switched type checker from mypy to ty for faster type checking
@@ -31,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Settings modal tab navigation no longer stops on invisible scroll containers
+- Feed items panel crash when opening a feed with a description
 
 ## [0.4.0] - 2025-12-02
 
