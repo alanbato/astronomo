@@ -12,7 +12,9 @@ These shortcuts work anywhere in the application:
 | ++ctrl+r++ | Refresh current page |
 | ++ctrl+b++ | Toggle bookmarks sidebar |
 | ++ctrl+d++ | Add current page to bookmarks |
+| ++ctrl+j++ | Toggle feeds screen |
 | ++ctrl+k++ | Open quick navigation (fuzzy finder) |
+| ++ctrl+s++ | Save page snapshot |
 | ++ctrl+comma++ | Open settings |
 
 ## Navigation
@@ -77,11 +79,48 @@ When the bookmarks sidebar is open:
 | ++enter++ | Open selected item |
 | ++escape++ | Close without selecting |
 
+## Feeds Screen
+
+When the feeds screen is open (++ctrl+j++):
+
+### General
+
+| Key | Action |
+|-----|--------|
+| ++escape++ or ++ctrl+j++ | Close feeds screen |
+| ++tab++ | Toggle focus between feeds list and items |
+| ++ctrl+n++ | Add new feed |
+| ++ctrl+f++ | Add new folder |
+| ++ctrl+r++ | Refresh selected feed |
+| ++ctrl+shift+r++ | Refresh all feeds |
+| ++ctrl+i++ | Import OPML |
+| ++ctrl+e++ | Export OPML |
+| ++d++ | Delete selected item |
+| ++e++ | Edit selected item |
+| ++m++ | Mark all items as read |
+
+### Feeds List
+
+| Key | Action |
+|-----|--------|
+| ++arrow-up++ / ++arrow-down++ | Navigate feeds |
+| ++enter++ | Load selected feed |
+| ++space++ | Toggle folder expand/collapse |
+
+### Feed Items
+
+| Key | Action |
+|-----|--------|
+| ++arrow-up++ / ++arrow-down++ | Navigate items |
+| ++enter++ | Open article in browser |
+
 ## Mouse Actions
 
 | Action | Effect |
 |--------|--------|
 | Click link | Navigate to link |
 | Click bookmark | Navigate to bookmark |
+| Click feed | Load feed items |
+| Click feed item | Open article |
 | Click back button (◀) | Go back in history |
 | Click forward button (▶) | Go forward in history |

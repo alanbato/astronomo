@@ -13,6 +13,7 @@ How-to guides are **task-oriented**. They guide you through the steps to solve r
 ### Organization
 
 - **[Bookmarks](bookmarks.md)** - Create, organize, and manage bookmarks and folders
+- **[Feeds](feeds.md)** - Subscribe to and read RSS/Atom feeds
 
 ### Configuration
 
