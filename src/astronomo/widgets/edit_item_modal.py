@@ -30,15 +30,9 @@ class EditItemModal(ModalScreen[bool]):
         width: 55;
         height: auto;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    EditItemModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     EditItemModal Label {
@@ -89,9 +83,9 @@ class EditItemModal(ModalScreen[bool]):
         current_value = (
             self.item.title if self._is_bookmark else self.item.name  # type: ignore
         )
-
-        with Container():
-            yield Label(title, classes="modal-title")
+        container = Container()
+        container.border_title = title
+        with container:
             yield Label(label)
             yield Input(
                 value=current_value,

@@ -37,9 +37,9 @@ class ImportCustomModal(ModalScreen[Identity | None]):
         self._key_path: Path | None = None
 
     def compose(self) -> ComposeResult:
-        with Container(id="import-custom-container"):
-            yield Label("Import Certificate", classes="modal-title")
-
+        container = Container(id="import-custom-container")
+        container.border_title = "Import Certificate"
+        with container:
             yield Label("Identity Name:", classes="field-label")
             yield Input(placeholder="My Certificate", id="name-input")
 

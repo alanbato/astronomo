@@ -91,16 +91,9 @@ class IdentityErrorModal(ModalScreen[IdentityErrorResult | None]):
         height: auto;
         max-height: 85%;
         border: thick $error;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    IdentityErrorModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
-        color: $error;
     }
 
     IdentityErrorModal .url-display {
@@ -215,9 +208,9 @@ class IdentityErrorModal(ModalScreen[IdentityErrorResult | None]):
             title = "Certificate Not Authorized"
         else:  # not_valid
             title = "Certificate Not Valid"
-
-        with Container():
-            yield Label(title, classes="modal-title")
+        container = Container()
+        container.border_title = title
+        with container:
             yield Label(self.url, classes="url-display")
             yield Label(self.message, classes="error-message")
 

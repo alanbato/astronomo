@@ -29,15 +29,9 @@ class EditFeedFolderModal(ModalScreen[bool]):
         width: 50;
         height: auto;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    EditFeedFolderModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     EditFeedFolderModal Label {
@@ -73,9 +67,9 @@ class EditFeedFolderModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Edit Feed Folder", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Edit Feed Folder"
+        with container:
             yield Label("Folder Name:")
             yield Input(
                 value=self.folder.name,

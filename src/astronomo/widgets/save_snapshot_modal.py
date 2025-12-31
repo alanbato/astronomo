@@ -29,15 +29,9 @@ class SaveSnapshotModal(ModalScreen[bool]):
         width: 70;
         height: auto;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    SaveSnapshotModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     SaveSnapshotModal .info-label {
@@ -79,9 +73,9 @@ class SaveSnapshotModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Save Page Snapshot", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Save Page Snapshot"
+        with container:
             yield Label("URL:", classes="info-label")
             yield Static(self.url, classes="info-value")
 

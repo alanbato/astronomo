@@ -61,9 +61,9 @@ class FilePickerModal(ModalScreen[Path | None]):
         self._show_hidden = False
 
     def compose(self) -> ComposeResult:
-        with Container(id="file-picker-container"):
-            yield Label(self.title_text, classes="modal-title")
-
+        container = Container(id="file-picker-container")
+        container.border_title = self.title_text
+        with container:
             yield Label("Path:", classes="field-label")
             with Horizontal(classes="path-input-row"):
                 yield Input(

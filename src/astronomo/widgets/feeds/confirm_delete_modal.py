@@ -29,16 +29,9 @@ class ConfirmDeleteFeedModal(ModalScreen[bool]):
         width: 55;
         height: auto;
         border: thick $error;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    ConfirmDeleteFeedModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
-        color: $error;
     }
 
     ConfirmDeleteFeedModal .item-name {
@@ -80,10 +73,11 @@ class ConfirmDeleteFeedModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         item = self.item
-
-        with Container():
+        title = "Delete Feed" if isinstance(item, Feed) else "Delete Folder"
+        container = Container()
+        container.border_title = title
+        with container:
             if isinstance(item, Feed):
-                yield Label("Delete Feed", classes="modal-title")
                 yield Static("Are you sure you want to delete this feed?")
                 yield Label(f'"{item.title}"', classes="item-name")
                 yield Static(
@@ -92,7 +86,6 @@ class ConfirmDeleteFeedModal(ModalScreen[bool]):
                     classes="warning-text",
                 )
             else:
-                yield Label("Delete Folder", classes="modal-title")
                 yield Static("Are you sure you want to delete this folder?")
                 yield Label(f'"{item.name}"', classes="item-name")
                 # Check if folder has feeds

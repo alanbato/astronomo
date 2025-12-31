@@ -35,15 +35,9 @@ class AddFeedModal(ModalScreen[Feed | None]):
         height: auto;
         max-height: 80%;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    AddFeedModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     AddFeedModal Label {
@@ -100,9 +94,9 @@ class AddFeedModal(ModalScreen[Feed | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Add Feed", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Add Feed"
+        with container:
             yield Label("Feed URL:")
             yield Input(
                 value=self.url,

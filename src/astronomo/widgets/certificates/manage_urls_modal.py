@@ -82,8 +82,9 @@ class ManageUrlsModal(ModalScreen[None]):
         self.identity = identity
 
     def compose(self) -> ComposeResult:
-        with Container():
-            yield Label("URL Associations", classes="modal-title")
+        container = Container()
+        container.border_title = "URL Associations"
+        with container:
             yield Label(f"Identity: {self.identity.name}", classes="identity-name")
 
             yield Label("URLs using this identity:", classes="section-label")

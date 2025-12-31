@@ -67,17 +67,9 @@ class QuickNavigationModal(ModalScreen[str | None]):
         height: 70%;
         max-height: 40;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 0;
-    }
-
-    QuickNavigationModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        background: $primary;
-        color: $text;
-        height: 3;
     }
 
     QuickNavigationModal #search-input {
@@ -149,8 +141,9 @@ class QuickNavigationModal(ModalScreen[str | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Quick Navigation (Ctrl+K)", classes="modal-title")
+        container = Container()
+        container.border_title = "Quick Navigation (Ctrl+K)"
+        with container:
             yield Input(
                 placeholder="Type to search bookmarks and history...",
                 id="search-input",

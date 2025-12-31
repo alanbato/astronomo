@@ -32,17 +32,9 @@ class SettingsScreen(ModalScreen[None]):
         height: 80%;
         background: $surface;
         border: tall $primary;
+        border-title-align: center;
         padding: 1 2;
         layout: vertical;
-    }
-
-    #settings-title {
-        height: auto;
-        text-align: center;
-        text-style: bold;
-        padding-bottom: 1;
-        border-bottom: solid $primary;
-        margin-bottom: 1;
     }
 
     #settings-tabs {
@@ -84,8 +76,9 @@ class SettingsScreen(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         app: Astronomo = self.app  # type: ignore[assignment]
-        with Container(id="settings-dialog"):
-            yield Static("Settings", id="settings-title")
+        container = Container(id="settings-dialog")
+        container.border_title = "Settings"
+        with container:
             with TabbedContent(id="settings-tabs"):
                 with TabPane("Appearance", id="tab-appearance"):
                     yield AppearanceSettings(app.config_manager)

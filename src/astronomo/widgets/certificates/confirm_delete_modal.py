@@ -36,9 +36,9 @@ class ConfirmDeleteModal(ModalScreen[bool]):
         self.identity = identity
 
     def compose(self) -> ComposeResult:
-        with Container():
-            yield Label("Delete Identity", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Delete Identity"
+        with container:
             yield Static(
                 "Are you sure you want to delete this identity?",
             )

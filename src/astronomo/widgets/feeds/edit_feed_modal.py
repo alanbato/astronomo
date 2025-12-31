@@ -30,15 +30,9 @@ class EditFeedModal(ModalScreen[bool]):
         height: auto;
         max-height: 80%;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    EditFeedModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     EditFeedModal Label {
@@ -84,9 +78,9 @@ class EditFeedModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Edit Feed", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Edit Feed"
+        with container:
             yield Label("Feed URL:")
             yield Label(self.feed.url, classes="url-label")
 

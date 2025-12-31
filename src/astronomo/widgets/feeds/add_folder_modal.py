@@ -28,15 +28,9 @@ class AddFeedFolderModal(ModalScreen[FeedFolder | None]):
         width: 50;
         height: auto;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    AddFeedFolderModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     AddFeedFolderModal Label {
@@ -71,9 +65,9 @@ class AddFeedFolderModal(ModalScreen[FeedFolder | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("New Feed Folder", classes="modal-title")
-
+        container = Container()
+        container.border_title = "New Feed Folder"
+        with container:
             yield Label("Folder Name:")
             yield Input(
                 placeholder="Enter folder name",

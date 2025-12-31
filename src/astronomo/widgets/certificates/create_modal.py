@@ -37,9 +37,9 @@ class CreateIdentityModal(ModalScreen[Identity | None]):
         self.manager = manager
 
     def compose(self) -> ComposeResult:
-        with Container():
-            yield Label("Create New Identity", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Create New Identity"
+        with container:
             yield Label("Identity name:", classes="field-label")
             yield Input(placeholder="My Identity", id="name-input")
 

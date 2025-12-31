@@ -27,15 +27,9 @@ class OpmlImportModal(ModalScreen[Path | None]):
         width: 70;
         height: auto;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    OpmlImportModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     OpmlImportModal Label {
@@ -71,9 +65,9 @@ class OpmlImportModal(ModalScreen[Path | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Import Feeds from OPML", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Import Feeds from OPML"
+        with container:
             yield Label("OPML File Path:")
             yield Input(
                 placeholder="/path/to/feeds.opml",

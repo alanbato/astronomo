@@ -7,7 +7,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Static
+from textual.widgets import Button, Input, Static
 
 from astronomo.identities import (
     IdentityManager,
@@ -40,9 +40,9 @@ class ImportLagrangeModal(ModalScreen[LagrangeImportResult | None]):
         self._importable: dict[int, tuple[Path, str, bool]] = {}
 
     def compose(self) -> ComposeResult:
-        with Container(id="import-lagrange-container"):
-            yield Label("Import from Lagrange", classes="modal-title")
-
+        container = Container(id="import-lagrange-container")
+        container.border_title = "Import from Lagrange"
+        with container:
             # Check for Lagrange directory
             self._lagrange_path = get_lagrange_idents_path()
 

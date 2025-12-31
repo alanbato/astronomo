@@ -48,9 +48,9 @@ class EditIdentityModal(ModalScreen[bool]):
         self._name_changed = False
 
     def compose(self) -> ComposeResult:
-        with Container():
-            yield Label("Edit Identity", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Edit Identity"
+        with container:
             # Rename section
             yield Label("Name:", classes="field-label")
             yield Input(

@@ -597,7 +597,9 @@ class FeedsScreen(Screen):
 
         with Horizontal(id="feeds-content"):
             with Vertical(id="feed-list-column"):
-                yield Input(placeholder="Search feeds...", id="search-input")
+                search_input = Input(placeholder="Type to filter...", id="search-input")
+                search_input.border_title = "Search"
+                yield search_input
                 yield FeedListPanel(self.manager, id="feed-list")
             yield FeedItemsPanel(self.manager, id="feed-items")
 

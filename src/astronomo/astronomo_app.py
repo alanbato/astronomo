@@ -127,7 +127,9 @@ class Astronomo(App[None]):
         with Horizontal(id="nav-bar"):
             yield Button("\u25c0", id="back-button", disabled=True)
             yield Button("\u25b6", id="forward-button", disabled=True)
-            yield Input(id="url-input")
+            url_input = Input(id="url-input")
+            url_input.border_title = "Address"
+            yield url_input
             yield Button("\u2699", id="settings-button")
         with Horizontal(id="main-content"):
             yield GemtextViewer(id="content")

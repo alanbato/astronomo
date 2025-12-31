@@ -35,15 +35,9 @@ class AddBookmarkModal(ModalScreen[Bookmark | None]):
         height: auto;
         max-height: 80%;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    AddBookmarkModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     AddBookmarkModal Label {
@@ -100,9 +94,9 @@ class AddBookmarkModal(ModalScreen[Bookmark | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Add Bookmark", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Add Bookmark"
+        with container:
             yield Label("Title:")
             yield Input(
                 value=self.suggested_title,

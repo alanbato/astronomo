@@ -32,15 +32,9 @@ class InputModal(ModalScreen[str | None]):
         height: auto;
         max-height: 80%;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    InputModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     InputModal .prompt-text {
@@ -120,9 +114,9 @@ class InputModal(ModalScreen[str | None]):
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
         title = "Sensitive Input" if self.sensitive else "Input Required"
-
-        with Container():
-            yield Label(title, classes="modal-title")
+        container = Container()
+        container.border_title = title
+        with container:
             yield Label(self.prompt, classes="prompt-text")
 
             # Use Input for sensitive data (passwords), TextArea for regular input

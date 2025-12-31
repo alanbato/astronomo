@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Feed refresh on-demand
 
 ### Changed
+- All modal dialogs now use centered border titles instead of internal label titles for a cleaner, more consistent UI
+- Settings screen now uses border title instead of internal header
+- URL bar (Address input) now has a border title
+- Feeds screen search input now has a border title
 - Switched type checker from mypy to ty for faster type checking
 - Refactored test suite to use shared pytest fixtures, reducing code duplication across test files
 - CI workflow now only publishes to PyPI on version tags, with TestPyPI as a prerequisite step

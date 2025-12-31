@@ -27,15 +27,9 @@ class OpmlExportModal(ModalScreen[Path | None]):
         width: 70;
         height: auto;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    OpmlExportModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     OpmlExportModal Label {
@@ -71,9 +65,9 @@ class OpmlExportModal(ModalScreen[Path | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Export Feeds to OPML", classes="modal-title")
-
+        container = Container()
+        container.border_title = "Export Feeds to OPML"
+        with container:
             yield Label("Output File Path:")
             yield Input(
                 value=str(Path.home() / "astronomo-feeds.opml"),

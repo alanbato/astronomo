@@ -88,15 +88,9 @@ class IdentitySelectModal(ModalScreen[IdentityResult | None]):
         height: auto;
         max-height: 85%;
         border: thick $primary;
+        border-title-align: center;
         background: $surface;
         padding: 1 2;
-    }
-
-    IdentitySelectModal .modal-title {
-        text-style: bold;
-        width: 100%;
-        content-align: center middle;
-        padding-bottom: 1;
     }
 
     IdentitySelectModal .url-display {
@@ -187,8 +181,9 @@ class IdentitySelectModal(ModalScreen[IdentityResult | None]):
 
     def compose(self) -> ComposeResult:
         """Compose the modal UI."""
-        with Container():
-            yield Label("Identity Required", classes="modal-title")
+        container = Container()
+        container.border_title = "Identity Required"
+        with container:
             yield Label(self.url, classes="url-display")
             yield Label(self.message, classes="prompt-text")
 
