@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-12-31
+
 ### Added
 - Quick navigation modal (Ctrl+K): Keyboard-driven fuzzy finder for quickly jumping to bookmarks and history entries
 - `get_all_entries()` method in `HistoryManager` to retrieve all history entries
@@ -79,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Syntax highlighting for preformatted code blocks
 - Theme support via Textual themes
 
-[Unreleased]: https://github.com/alanbato/astronomo/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/alanbato/astronomo/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/alanbato/astronomo/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/alanbato/astronomo/compare/v0.1.0...v0.4.0
 [0.1.0]: https://github.com/alanbato/astronomo/releases/tag/v0.1.0
