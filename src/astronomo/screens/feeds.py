@@ -467,12 +467,11 @@ class FeedItemsPanel(VerticalScroll):
         self.mount(Label(feed_data.title or feed.title, classes="panel-title"))
 
         if feed_data.description:
-            with self.app.query_one(FeedItemsPanel):
-                info_container = Container(classes="feed-info")
-                self.mount(info_container)
-                info_container.mount(
-                    Label(feed_data.description, classes="feed-description")
-                )
+            info_container = Container(classes="feed-info")
+            self.mount(info_container)
+            info_container.mount(
+                Label(feed_data.description, classes="feed-description")
+            )
 
         # Feed items
         if not feed_data.items:
@@ -680,7 +679,7 @@ class FeedsScreen(Screen):
 
     # Actions
 
-    def action_dismiss(self) -> None:
+    async def action_dismiss(self, result: None = None) -> None:
         """Close the feeds screen."""
         self.dismiss()
 

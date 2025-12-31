@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Settings modal tab navigation no longer stops on invisible scroll containers
+- Feed items panel crash when opening a feed with a description
 
 ## [0.4.0] - 2025-12-02
 
