@@ -4,16 +4,33 @@ This module handles fetching and parsing RSS/Atom feeds via the Gemini protocol.
 """
 
 import asyncio
+import html
 import logging
+import re
 import ssl
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import feedparser
+
+
 from nauyaca.client import GeminiClient
 
 logger = logging.getLogger(__name__)
+
+
+def strip_html(text: str | None) -> str | None:
+    """Strip HTML tags and unescape entities from text."""
+    if text is None:
+        return None
+    # Remove HTML tags
+    clean = re.sub(r"<[^>]+>", "", text)
+    # Unescape HTML entities
+    clean = html.unescape(clean)
+    # Normalize whitespace
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean if clean else None
 
 
 @dataclass
@@ -123,23 +140,26 @@ async def fetch_feed(
                 # Skip items without links
                 continue
 
-            # Get summary/description
-            summary = (
+            # Get summary/description (strip HTML tags)
+            raw_summary = (
                 entry.get("summary")
                 or entry.get("description")
                 or entry.get("content", [{}])[0].get("value")
             )
+            summary = strip_html(raw_summary)
 
-            # Get published date
+            # Get published date (feedparser returns UTC time tuples)
             published = None
             if "published_parsed" in entry and entry.published_parsed:
                 try:
-                    published = datetime(*entry.published_parsed[:6])
+                    time_tuple = entry.published_parsed[:6]
+                    published = datetime(*time_tuple).replace(tzinfo=timezone.utc)
                 except (TypeError, ValueError):
                     pass
             elif "updated_parsed" in entry and entry.updated_parsed:
                 try:
-                    published = datetime(*entry.updated_parsed[:6])
+                    time_tuple = entry.updated_parsed[:6]
+                    published = datetime(*time_tuple).replace(tzinfo=timezone.utc)
                 except (TypeError, ValueError):
                     pass
 

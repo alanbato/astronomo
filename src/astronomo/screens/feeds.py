@@ -5,16 +5,19 @@ with folder organization, read/unread tracking, and feed item viewing.
 """
 
 import logging
+from datetime import datetime
 from typing import TYPE_CHECKING
+
+import humanize
 
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, Horizontal, VerticalScroll
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.reactive import reactive
 from textual.screen import Screen
-from textual.widgets import Button, Input, Label, Static
+from textual.widgets import Footer, Input, Label, Static
 
 from astronomo.feed_fetcher import FeedData, FeedItem, fetch_feed
 from astronomo.feeds import Feed, FeedFolder, FeedManager
@@ -33,6 +36,17 @@ if TYPE_CHECKING:
     from astronomo.astronomo_app import Astronomo
 
 logger = logging.getLogger(__name__)
+
+
+def format_relative_time(dt: datetime | None) -> str:
+    """Format a datetime as a human-readable relative time string."""
+    if dt is None:
+        return ""
+    # Handle future dates (e.g., feeds that use noon UTC for today's posts)
+    now = datetime.now(dt.tzinfo)
+    if dt > now:
+        return "today"
+    return humanize.naturaltime(dt)
 
 
 class FeedFolderWidget(Static):
@@ -115,7 +129,7 @@ class FeedWidget(Static):
         return f"{self.feed.title}{badge}"
 
 
-class FeedItemWidget(Static):
+class FeedItemWidget(Static, can_focus=True):
     """Widget displaying a single feed item."""
 
     DEFAULT_CSS = """
@@ -128,6 +142,11 @@ class FeedItemWidget(Static):
     }
 
     FeedItemWidget:hover {
+        background: $surface;
+    }
+
+    FeedItemWidget:focus {
+        border: solid $accent;
         background: $surface;
     }
 
@@ -149,6 +168,12 @@ class FeedItemWidget(Static):
     }
     """
 
+    BINDINGS = [
+        Binding("up", "focus_previous_item", "Previous", show=False),
+        Binding("down", "focus_next_item", "Next", show=False),
+        Binding("enter", "select_item", "Open", show=False),
+    ]
+
     def __init__(
         self,
         item: FeedItem,
@@ -160,20 +185,38 @@ class FeedItemWidget(Static):
         self.is_read = is_read
         if is_read:
             self.add_class("-read")
+        # Set border title to human-readable time
+        self.border_title = format_relative_time(item.published)
+
+    def action_focus_previous_item(self) -> None:
+        """Focus the previous item, or feed list if at first item."""
+        items = list(self.screen.query("FeedItemWidget"))
+        if items and items[0] is self:
+            # At first item, go back to feed list
+            self.screen.query_one("#feed-list", FeedListPanel).focus()
+        else:
+            self.screen.focus_previous()
+
+    def action_focus_next_item(self) -> None:
+        """Focus the next item."""
+        self.screen.focus_next()
+
+    def action_select_item(self) -> None:
+        """Select/activate this item."""
+        # Trigger click behavior
+        items_panel = self.screen.query_one("#feed-items", FeedItemsPanel)
+        if items_panel.current_feed is not None:
+            items_panel.post_message(
+                FeedItemsPanel.ItemSelected(self.item, items_panel.current_feed.id)
+            )
 
     def compose(self) -> ComposeResult:
         """Compose the item widget."""
         yield Label(self.item.title, classes="item-title")
 
-        # Build meta line
-        meta_parts = []
-        if self.item.published:
-            meta_parts.append(self.item.published.strftime("%Y-%m-%d %H:%M"))
+        # Show author if available
         if self.item.author:
-            meta_parts.append(f"by {self.item.author}")
-
-        if meta_parts:
-            yield Label(" • ".join(meta_parts), classes="item-meta")
+            yield Label(f"by {self.item.author}", classes="item-meta")
 
         if self.item.summary:
             # Truncate long summaries
@@ -183,20 +226,20 @@ class FeedItemWidget(Static):
             yield Label(summary, classes="item-summary")
 
 
-class FeedListPanel(VerticalScroll):
+class FeedListPanel(VerticalScroll, can_focus=True):
     """Left panel showing feeds organized in folders."""
+
+    BORDER_TITLE = "Feeds"
 
     DEFAULT_CSS = """
     FeedListPanel {
-        width: 30;
-        height: 100%;
-        border-right: solid $primary;
+        width: 100%;
+        height: 1fr;
+        border: solid $primary;
     }
 
-    FeedListPanel .panel-title {
-        text-style: bold;
-        padding: 1;
-        background: $primary;
+    FeedListPanel:focus {
+        border: solid $accent;
     }
 
     FeedListPanel .empty-message {
@@ -263,12 +306,6 @@ class FeedListPanel(VerticalScroll):
 
         # Build the list
         self._items = []
-
-        # Add title
-        title_text = "Feeds"
-        if self._search_query:
-            title_text += " (filtered)"
-        self.mount(Label(title_text, classes="panel-title"))
 
         # Get folders and root feeds
         folders = self.manager.get_all_folders()
@@ -381,16 +418,17 @@ class FeedListPanel(VerticalScroll):
 class FeedItemsPanel(VerticalScroll):
     """Right panel showing items from the selected feed."""
 
+    BORDER_TITLE = "Items"
+
     DEFAULT_CSS = """
     FeedItemsPanel {
         width: 1fr;
         height: 100%;
+        border: solid $primary;
     }
 
-    FeedItemsPanel .panel-title {
-        text-style: bold;
-        padding: 1;
-        background: $primary;
+    FeedItemsPanel:focus-within {
+        border: solid $accent;
     }
 
     FeedItemsPanel .feed-info {
@@ -506,23 +544,11 @@ class FeedsScreen(Screen):
         height: auto;
         width: 100%;
         padding: 1;
-        background: $primary;
+        background: $surface;
     }
 
     FeedsScreen #feeds-title {
         text-style: bold;
-    }
-
-    FeedsScreen #feeds-toolbar {
-        height: auto;
-        width: 100%;
-        padding: 1;
-        background: $surface;
-        align: left middle;
-    }
-
-    FeedsScreen #feeds-toolbar Button {
-        margin-right: 1;
     }
 
     FeedsScreen #feeds-content {
@@ -530,31 +556,34 @@ class FeedsScreen(Screen):
         height: 1fr;
     }
 
-    FeedsScreen #search-container {
+    FeedsScreen #feed-list-column {
         width: 30;
-        padding: 1;
+        height: 100%;
     }
 
     FeedsScreen #search-input {
         width: 100%;
+        margin: 1;
     }
     """
 
     BINDINGS = [
         Binding("escape", "dismiss", "Close", priority=True),
+        Binding("ctrl+j", "dismiss", "Close", show=False, priority=True),
+        Binding("tab", "toggle_panel_focus", "Switch Panel", priority=True),
         Binding("ctrl+n", "add_feed", "New Feed"),
         Binding("ctrl+f", "add_folder", "New Folder"),
         Binding("ctrl+r", "refresh_feed", "Refresh"),
         Binding("ctrl+shift+r", "refresh_all", "Refresh All"),
-        Binding("ctrl+i", "import_opml", "Import OPML"),
-        Binding("ctrl+e", "export_opml", "Export OPML"),
+        Binding("ctrl+i", "import_opml", "Import"),
+        Binding("ctrl+e", "export_opml", "Export", priority=True),
         Binding("up", "cursor_up", "Up", show=False),
         Binding("down", "cursor_down", "Down", show=False),
         Binding("enter", "activate_item", "Open", show=False),
         Binding("space", "toggle_folder", "Toggle", show=False),
         Binding("d", "delete_item", "Delete"),
         Binding("e", "edit_item", "Edit"),
-        Binding("m", "mark_all_read", "Mark All Read"),
+        Binding("m", "mark_all_read", "Mark Read"),
     ]
 
     def __init__(self, manager: FeedManager, **kwargs) -> None:
@@ -566,39 +595,32 @@ class FeedsScreen(Screen):
         with Container(id="feeds-header"):
             yield Label("Feed Reader", id="feeds-title")
 
-        with Horizontal(id="feeds-toolbar"):
-            yield Button("New Feed (Ctrl+N)", id="btn-new-feed")
-            yield Button("New Folder (Ctrl+F)", id="btn-new-folder")
-            yield Button("Refresh (Ctrl+R)", id="btn-refresh")
-            yield Button("Refresh All (Ctrl+Shift+R)", id="btn-refresh-all")
-            yield Button("Import OPML (Ctrl+I)", id="btn-import")
-            yield Button("Export OPML (Ctrl+E)", id="btn-export")
-
         with Horizontal(id="feeds-content"):
-            with Container(id="search-container"):
+            with Vertical(id="feed-list-column"):
                 yield Input(placeholder="Search feeds...", id="search-input")
-            yield FeedListPanel(self.manager, id="feed-list")
+                yield FeedListPanel(self.manager, id="feed-list")
             yield FeedItemsPanel(self.manager, id="feed-items")
+
+        yield Footer()
 
     def on_mount(self) -> None:
         """Initialize the feeds screen."""
         items_panel = self.query_one("#feed-items", FeedItemsPanel)
         items_panel.show_placeholder()
+        # Set initial focus to feed list for keyboard navigation
+        self.query_one("#feed-list", FeedListPanel).focus()
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle toolbar button presses."""
-        if event.button.id == "btn-new-feed":
-            self.action_add_feed()
-        elif event.button.id == "btn-new-folder":
-            self.action_add_folder()
-        elif event.button.id == "btn-refresh":
-            self.action_refresh_feed()
-        elif event.button.id == "btn-refresh-all":
-            self.action_refresh_all()
-        elif event.button.id == "btn-import":
-            self.action_import_opml()
-        elif event.button.id == "btn-export":
-            self.action_export_opml()
+    def action_toggle_panel_focus(self) -> None:
+        """Toggle focus between feed list and first feed item."""
+        feed_list = self.query_one("#feed-list", FeedListPanel)
+
+        if feed_list.has_focus:
+            # Focus first feed item if available
+            items = list(self.query("FeedItemWidget"))
+            if items:
+                items[0].focus()
+        else:
+            feed_list.focus()
 
     def on_input_changed(self, event: Input.Changed) -> None:
         """Handle search input changes."""

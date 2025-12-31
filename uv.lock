@@ -173,6 +173,7 @@ source = { editable = "." }
 dependencies = [
     { name = "emoji" },
     { name = "feedparser" },
+    { name = "humanize" },
     { name = "nauyaca" },
     { name = "textual", extra = ["syntax"] },
     { name = "tomli", marker = "python_full_version < '3.11'" },
@@ -204,6 +205,7 @@ docs = [
 requires-dist = [
     { name = "emoji", specifier = ">=2.0.0" },
     { name = "feedparser", specifier = ">=6.0.0" },
+    { name = "humanize", specifier = ">=4.0.0" },
     { name = "nauyaca", specifier = ">=0.1.0" },
     { name = "textual", extras = ["syntax"], specifier = ">=6.6.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },

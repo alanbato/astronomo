@@ -34,10 +34,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Switched type checker from mypy to ty for faster type checking
 - Refactored test suite to use shared pytest fixtures, reducing code duplication across test files
 - CI workflow now only publishes to PyPI on version tags, with TestPyPI as a prerequisite step
+- Feeds screen: Replaced button toolbar with keyboard bindings shown in footer for UI consistency
+- Feeds screen: Fixed contrast issues by using `$surface` instead of `$primary` for header and panel titles
+- Feeds screen: Ctrl+J now toggles the feeds screen (closes it when already open)
+- Feeds screen: Moved search box to top of feed list column for cleaner layout
+- Feeds screen: Removed redundant "Feeds" title from sidebar, now shown as border title
+- Feeds screen: Added TAB to toggle focus between feed list and first feed item
+- Feeds screen: Feed items now individually focusable with arrow key navigation
+- Feeds screen: Panel borders highlight when focused/contains focus
+- Feeds screen: Feed item timestamps now shown as human-readable relative time (e.g., "2 hours ago") in border title using `humanize` library
 
 ### Fixed
 - Settings modal tab navigation no longer stops on invisible scroll containers
 - Feed items panel crash when opening a feed with a description
+- Feed item summaries now properly stripped of HTML tags and entities
+- URL bar now updates when navigating to a page from feeds screen
+- Feed item dates now correctly timezone-aware, future dates show as "today"
 
 ## [0.4.0] - 2025-12-02
 

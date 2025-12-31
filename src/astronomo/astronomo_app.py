@@ -328,6 +328,10 @@ class Astronomo(App[None]):
             # Store current URL for relative link resolution
             self.current_url = url
 
+            # Update URL bar
+            url_input = self.query_one("#url-input", Input)
+            url_input.value = url
+
             # Format and display the response (now returns list[GemtextLine])
             parsed_lines = format_response(url, response)
             viewer.update_content(parsed_lines)
