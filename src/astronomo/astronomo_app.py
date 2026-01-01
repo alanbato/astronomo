@@ -145,9 +145,8 @@ class Astronomo(App[None]):
         url = self._initial_url or self.config_manager.home_page
 
         if url:
-            # Auto-prefix gemini:// if not present
-            if not url.startswith("gemini://"):
-                url = f"gemini://{url}"
+            # Normalize URL with smart scheme detection
+            url = self._normalize_url(url)
 
             # Update URL input
             url_input = self.query_one("#url-input", Input)
@@ -161,7 +160,8 @@ class Astronomo(App[None]):
         else:
             # Show welcome message
             welcome_text = (
-                "# Welcome to Astronomo!\n\nEnter a Gemini URL above to get started."
+                "# Welcome to Astronomo!\n\nEnter a URL above to get started.\n\n"
+                "Supported protocols: Gemini, Gopher, Finger"
             )
             viewer.update_content(parse_gemtext(welcome_text))
 

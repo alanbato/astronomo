@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-protocol link navigation: Click links to navigate between Gemini, Gopher, and Finger resources
 - HTTP/HTTPS links now open in the system browser instead of showing an error
 
+### Fixed
+- Command-line URLs with explicit protocols (e.g., `astronomo gopher://...`) are no longer incorrectly prefixed with `gemini://`
+
 ## [0.5.0] - 2025-12-31
 
 ### Added
