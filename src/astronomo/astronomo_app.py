@@ -34,6 +34,7 @@ from astronomo.identities import Identity, IdentityManager
 from astronomo.parser import LineType, parse_gemtext
 from astronomo.response_handler import format_response
 from astronomo.screens import FeedsScreen, SettingsScreen
+from astronomo.tabs import Tab, TabManager
 from astronomo.widgets import (
     AddBookmarkModal,
     BookmarksSidebar,
@@ -52,6 +53,7 @@ from astronomo.widgets import (
     SaveSnapshotModal,
     SessionIdentityModal,
     SessionIdentityResult,
+    TabBar,
 )
 
 # Register URL schemes for proper urljoin behavior
@@ -95,6 +97,20 @@ class Astronomo(App[None]):
         ("ctrl+k", "quick_navigation", "Quick Nav"),
         ("ctrl+j", "open_feeds", "Feeds"),
         ("ctrl+comma", "toggle_settings", "Settings"),
+        # Tab management
+        ("ctrl+t", "new_tab", "New Tab"),
+        ("ctrl+w", "close_tab", "Close Tab"),
+        ("ctrl+tab", "next_tab", "Next Tab"),
+        ("ctrl+shift+tab", "prev_tab", "Prev Tab"),
+        ("ctrl+1", "jump_to_tab_1", ""),
+        ("ctrl+2", "jump_to_tab_2", ""),
+        ("ctrl+3", "jump_to_tab_3", ""),
+        ("ctrl+4", "jump_to_tab_4", ""),
+        ("ctrl+5", "jump_to_tab_5", ""),
+        ("ctrl+6", "jump_to_tab_6", ""),
+        ("ctrl+7", "jump_to_tab_7", ""),
+        ("ctrl+8", "jump_to_tab_8", ""),
+        ("ctrl+9", "jump_to_tab_9", ""),
     ]
 
     def __init__(
@@ -112,24 +128,53 @@ class Astronomo(App[None]):
         # Apply theme from config
         self.theme = self.config_manager.theme
 
-        self.current_url: str = ""
-        self.history = HistoryManager(max_size=100)
+        # Tab management - replaces single-page state
+        self.tab_manager = TabManager(max_tabs=20)
         self.bookmarks = BookmarkManager()
         self.feeds = FeedManager()
         self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url
-        # Session identity choices (persisted to disk with remember_choice mode)
-        # Key: URL prefix, Value: Identity or None (anonymous)
-        self._session_identity_choices: dict[str, Identity | None] = {}
+        # Global session identity choices (shared across tabs, persisted to disk)
+        self._global_session_identity_choices: dict[str, Identity | None] = {}
         self._session_choices_path = (
             self.config_manager.config_dir / "session_choices.toml"
         )
         self._load_session_choices()
 
+    # --- Tab State Properties (delegate to active tab) ---
+
+    @property
+    def current_url(self) -> str:
+        """Get the current URL from the active tab."""
+        tab = self.tab_manager.current_tab()
+        return tab.url if tab else ""
+
+    @current_url.setter
+    def current_url(self, value: str) -> None:
+        """Set the current URL on the active tab."""
+        tab = self.tab_manager.current_tab()
+        if tab:
+            tab.url = value
+
+    @property
+    def history(self) -> HistoryManager:
+        """Get the history manager for the active tab."""
+        tab = self.tab_manager.current_tab()
+        if tab:
+            return tab.history
+        # Return an empty manager if no tab (shouldn't happen in practice)
+        return HistoryManager(max_size=100)
+
+    @property
+    def _session_identity_choices(self) -> dict[str, Identity | None]:
+        """Get global session identity choices (shared across all tabs)."""
+        return self._global_session_identity_choices
+
     def compose(self) -> ComposeResult:
         """Compose the main browsing UI."""
         yield Header()
+        yield TabBar(id="tab-bar")
         with Horizontal(id="nav-bar"):
             yield Button("\u25c0", id="back-button", disabled=True)
             yield Button("\u25b6", id="forward-button", disabled=True)
@@ -149,10 +194,15 @@ class Astronomo(App[None]):
         # Use initial URL from command line, or fall back to configured home page
         url = self._initial_url or self.config_manager.home_page
 
+        # Create initial tab
+        initial_title = "New Tab"
         if url:
-            # Normalize URL with smart scheme detection
             url = self._normalize_url(url)
+            initial_title = urlparse(url).netloc or url[:20]
+        self.tab_manager.create_tab(url=url or "", title=initial_title)
+        self._update_tab_bar()
 
+        if url:
             # Update URL input
             url_input = self.query_one("#url-input", Input)
             url_input.value = url
@@ -460,6 +510,8 @@ class Astronomo(App[None]):
                 )
                 self.history.push(entry)
                 self._update_navigation_buttons()
+                # Update tab title from page content
+                self._update_tab_title()
         except asyncio.TimeoutError:
             timeout = self.config_manager.timeout
             error_text = (
@@ -506,10 +558,14 @@ class Astronomo(App[None]):
             # Relative URL - resolve against current URL
             link_url = urljoin(self.current_url, link_url)
 
-        # Update URL input and fetch
-        url_input = self.query_one("#url-input", Input)
-        url_input.value = link_url
-        self.get_url(link_url)
+        if message.new_tab:
+            # Open link in a new tab
+            self._open_in_new_tab(link_url)
+        else:
+            # Update URL input and fetch in current tab
+            url_input = self.query_one("#url-input", Input)
+            url_input.value = link_url
+            self.get_url(link_url)
 
     def on_gemtext_viewer_navigate_back(
         self, message: GemtextViewer.NavigateBack
@@ -989,6 +1045,7 @@ class Astronomo(App[None]):
                 )
                 self.history.push(entry)
                 self._update_navigation_buttons()
+                self._update_tab_title()
         except asyncio.TimeoutError:
             timeout = self.config_manager.timeout
             error_text = (
@@ -1084,6 +1141,7 @@ class Astronomo(App[None]):
                 )
                 self.history.push(entry)
                 self._update_navigation_buttons()
+                self._update_tab_title()
         except asyncio.TimeoutError:
             timeout = self.config_manager.timeout
             error_text = (
@@ -1516,6 +1574,232 @@ class Astronomo(App[None]):
     def action_open_feeds(self) -> None:
         """Open the feeds screen."""
         self.push_screen(FeedsScreen(self.feeds))
+
+    # --- Tab Management ---
+
+    def _update_tab_bar(self) -> None:
+        """Refresh the tab bar with current tabs."""
+        tab_bar = self.query_one("#tab-bar", TabBar)
+        tabs = self.tab_manager.all_tabs()
+        current = self.tab_manager.current_tab()
+        tab_bar.update_tabs(tabs, current.id if current else "")
+
+    def _update_tab_title(self) -> None:
+        """Update the current tab's title from page content."""
+        tab = self.tab_manager.current_tab()
+        if not tab:
+            return
+
+        # Get title from page H1 or use URL hostname
+        title = self._get_page_title()
+        if not title:
+            parsed = urlparse(tab.url)
+            title = parsed.netloc or tab.url[:20] or "New Tab"
+
+        # Truncate long titles
+        if len(title) > 20:
+            title = title[:17] + "..."
+
+        tab.title = title
+        self._update_tab_bar()
+
+    def _save_current_tab_state(self) -> None:
+        """Save current viewer state to active tab."""
+        tab = self.tab_manager.current_tab()
+        if not tab:
+            return
+
+        viewer = self.query_one("#content", GemtextViewer)
+        tab.viewer_state.scroll_position = viewer.scroll_y
+        tab.viewer_state.link_index = viewer.current_link_index
+        tab.viewer_state.content = viewer.lines.copy()
+
+    def _restore_tab_state(self, tab: Tab) -> None:
+        """Restore viewer state from a tab."""
+        viewer = self.query_one("#content", GemtextViewer)
+        url_input = self.query_one("#url-input", Input)
+
+        # Restore URL
+        url_input.value = tab.url
+
+        # Restore content
+        if tab.viewer_state.content:
+            viewer.update_content(tab.viewer_state.content)
+            # Restore scroll position and link selection
+            viewer.scroll_y = tab.viewer_state.scroll_position
+            viewer.current_link_index = tab.viewer_state.link_index
+        else:
+            # Empty tab - show welcome or loading
+            if tab.url:
+                loading_text = f"# Fetching\n\n{tab.url}\n\nPlease wait..."
+                viewer.update_content(parse_gemtext(loading_text))
+            else:
+                welcome_text = (
+                    "# Welcome to Astronomo!\n\nEnter a URL above to get started.\n\n"
+                    "Supported protocols: Gemini, Gopher, Finger"
+                )
+                viewer.update_content(parse_gemtext(welcome_text))
+
+        # Update navigation buttons for this tab's history
+        self._update_navigation_buttons()
+
+    def _switch_to_tab(self, tab_id: str) -> None:
+        """Switch to a specific tab, saving current state first."""
+        # Save current tab state before switching
+        self._save_current_tab_state()
+
+        # Switch to new tab
+        tab = self.tab_manager.switch_to_tab(tab_id)
+        if tab:
+            self._restore_tab_state(tab)
+            self._update_tab_bar()
+            # Focus the content viewer
+            viewer = self.query_one("#content", GemtextViewer)
+            viewer.focus()
+
+    def action_new_tab(self) -> None:
+        """Create a new empty tab."""
+        if not self.tab_manager.can_create_tab():
+            self.notify("Maximum number of tabs reached", severity="warning")
+            return
+
+        # Save current tab state before creating new one
+        self._save_current_tab_state()
+
+        # Create and switch to new tab
+        tab = self.tab_manager.create_tab(url="", title="New Tab")
+        self._restore_tab_state(tab)
+        self._update_tab_bar()
+
+        # Focus URL input for immediate typing
+        url_input = self.query_one("#url-input", Input)
+        url_input.focus()
+
+    def _open_in_new_tab(self, url: str) -> None:
+        """Open a URL in a new tab.
+
+        Args:
+            url: The URL to open in the new tab
+        """
+        if not self.tab_manager.can_create_tab():
+            self.notify("Maximum number of tabs reached", severity="warning")
+            return
+
+        # Save current tab state
+        self._save_current_tab_state()
+
+        # Create new tab with the URL and switch to it
+        parsed = urlparse(url)
+        title = parsed.netloc or url[:20] or "Loading..."
+        tab = self.tab_manager.create_tab(url=url, title=title)
+        self._restore_tab_state(tab)
+        self._update_tab_bar()
+
+        # Fetch the URL in the new tab
+        self.get_url(url)
+
+    def action_close_tab(self) -> None:
+        """Close the current tab."""
+        if not self.tab_manager.can_close_tab():
+            self.notify("Cannot close the last tab", severity="warning")
+            return
+
+        current = self.tab_manager.current_tab()
+        if not current:
+            return
+
+        # Close and get next tab
+        next_tab = self.tab_manager.close_tab(current.id)
+        if next_tab:
+            self._restore_tab_state(next_tab)
+        self._update_tab_bar()
+
+    def action_next_tab(self) -> None:
+        """Switch to the next tab."""
+        self._save_current_tab_state()
+        tab = self.tab_manager.next_tab()
+        if tab:
+            self._restore_tab_state(tab)
+            self._update_tab_bar()
+
+    def action_prev_tab(self) -> None:
+        """Switch to the previous tab."""
+        self._save_current_tab_state()
+        tab = self.tab_manager.prev_tab()
+        if tab:
+            self._restore_tab_state(tab)
+            self._update_tab_bar()
+
+    def _action_jump_to_tab(self, index: int) -> None:
+        """Jump to tab by index (0-based)."""
+        if index >= self.tab_manager.tab_count():
+            return
+        self._save_current_tab_state()
+        tab = self.tab_manager.switch_to_index(index)
+        if tab:
+            self._restore_tab_state(tab)
+            self._update_tab_bar()
+
+    def action_jump_to_tab_1(self) -> None:
+        """Jump to tab 1."""
+        self._action_jump_to_tab(0)
+
+    def action_jump_to_tab_2(self) -> None:
+        """Jump to tab 2."""
+        self._action_jump_to_tab(1)
+
+    def action_jump_to_tab_3(self) -> None:
+        """Jump to tab 3."""
+        self._action_jump_to_tab(2)
+
+    def action_jump_to_tab_4(self) -> None:
+        """Jump to tab 4."""
+        self._action_jump_to_tab(3)
+
+    def action_jump_to_tab_5(self) -> None:
+        """Jump to tab 5."""
+        self._action_jump_to_tab(4)
+
+    def action_jump_to_tab_6(self) -> None:
+        """Jump to tab 6."""
+        self._action_jump_to_tab(5)
+
+    def action_jump_to_tab_7(self) -> None:
+        """Jump to tab 7."""
+        self._action_jump_to_tab(6)
+
+    def action_jump_to_tab_8(self) -> None:
+        """Jump to tab 8."""
+        self._action_jump_to_tab(7)
+
+    def action_jump_to_tab_9(self) -> None:
+        """Jump to tab 9."""
+        self._action_jump_to_tab(8)
+
+    # --- Tab Bar Event Handlers ---
+
+    def on_tab_bar_tab_selected(self, message: TabBar.TabSelected) -> None:
+        """Handle tab selection from tab bar."""
+        self._switch_to_tab(message.tab_id)
+
+    def on_tab_bar_tab_close_requested(self, message: TabBar.TabCloseRequested) -> None:
+        """Handle tab close request from tab bar."""
+        if not self.tab_manager.can_close_tab():
+            self.notify("Cannot close the last tab", severity="warning")
+            return
+
+        # If closing the active tab, handle same as action_close_tab
+        current = self.tab_manager.current_tab()
+        if current and current.id == message.tab_id:
+            self.action_close_tab()
+        else:
+            # Closing a non-active tab
+            self.tab_manager.close_tab(message.tab_id)
+            self._update_tab_bar()
+
+    def on_tab_bar_new_tab_requested(self, message: TabBar.NewTabRequested) -> None:
+        """Handle new tab request from tab bar."""
+        self.action_new_tab()
 
 
 if __name__ == "__main__":

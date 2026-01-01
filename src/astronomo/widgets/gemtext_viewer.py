@@ -214,11 +214,19 @@ class GemtextLinkWidget(GemtextLineWidget):
         content = self._process_emoji(self.line.content)
         return f"{prefix}{content}"
 
-    def on_click(self) -> None:
-        """Handle click on link."""
+    def on_click(self, event) -> None:
+        """Handle click on link.
+
+        Ctrl+click or middle-click opens in a new tab.
+        """
         parent = self.parent
+        # Check for center wrapper
+        if isinstance(parent, Center):
+            parent = parent.parent
         if isinstance(parent, GemtextViewer):
-            parent.action_activate_link_by_index(self.link_index)
+            # Detect Ctrl key or middle mouse button for new tab
+            new_tab = event.ctrl or event.button == 2
+            parent.action_activate_link_by_index(self.link_index, new_tab=new_tab)
 
 
 # --- Line Widget Factory ---
@@ -277,6 +285,7 @@ class GemtextViewer(VerticalScroll):
         ("left", "prev_link", "Prev Link"),
         ("right", "next_link", "Next Link"),
         ("enter", "activate_link", "Activate Link"),
+        ("ctrl+enter", "activate_link_new_tab", "Open in New Tab"),
         ("backspace", "navigate_back", "Back"),
         ("shift+backspace", "navigate_forward", "Forward"),
     ]
@@ -285,10 +294,16 @@ class GemtextViewer(VerticalScroll):
     current_link_index: reactive[int] = reactive(-1, init=False)
 
     class LinkActivated(Message):
-        """Message sent when a link is activated."""
+        """Message sent when a link is activated.
 
-        def __init__(self, link: GemtextLink) -> None:
+        Attributes:
+            link: The GemtextLink that was activated
+            new_tab: Whether to open in a new tab (Ctrl+click, middle-click, or Ctrl+Enter)
+        """
+
+        def __init__(self, link: GemtextLink, new_tab: bool = False) -> None:
             self.link = link
+            self.new_tab = new_tab
             super().__init__()
 
     class NavigateBack(Message):
@@ -400,11 +415,15 @@ class GemtextViewer(VerticalScroll):
         else:
             self.current_link_index = len(self._link_widgets) - 1
 
-    def activate_current_link(self) -> None:
-        """Activate the currently selected link."""
+    def activate_current_link(self, new_tab: bool = False) -> None:
+        """Activate the currently selected link.
+
+        Args:
+            new_tab: Whether to open in a new tab
+        """
         link_widget = self._get_link_widget(self.current_link_index)
         if link_widget:
-            self.post_message(self.LinkActivated(link_widget.link))
+            self.post_message(self.LinkActivated(link_widget.link, new_tab=new_tab))
 
     def action_prev_link(self) -> None:
         """Action: Navigate to the previous link."""
@@ -418,10 +437,19 @@ class GemtextViewer(VerticalScroll):
         """Action: Activate the currently selected link."""
         self.activate_current_link()
 
-    def action_activate_link_by_index(self, index: int) -> None:
-        """Action: Activate a specific link by its index (used by click handler)."""
+    def action_activate_link_new_tab(self) -> None:
+        """Action: Activate the currently selected link in a new tab."""
+        self.activate_current_link(new_tab=True)
+
+    def action_activate_link_by_index(self, index: int, new_tab: bool = False) -> None:
+        """Action: Activate a specific link by its index (used by click handler).
+
+        Args:
+            index: The link index to activate
+            new_tab: Whether to open in a new tab
+        """
         self.current_link_index = index
-        self.activate_current_link()
+        self.activate_current_link(new_tab=new_tab)
 
     def action_navigate_back(self) -> None:
         """Action: Navigate back in history."""

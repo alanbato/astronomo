@@ -24,6 +24,7 @@ from astronomo.widgets.session_identity_modal import (
     SessionIdentityModal,
     SessionIdentityResult,
 )
+from astronomo.widgets.tab_bar import TabBar, TabButton
 
 __all__ = [
     "AddBookmarkModal",
@@ -43,4 +44,6 @@ __all__ = [
     "SaveSnapshotModal",
     "SessionIdentityModal",
     "SessionIdentityResult",
+    "TabBar",
+    "TabButton",
 ]

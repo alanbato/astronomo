@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Browser tabs: Multiple tabs with independent browsing sessions
+  - Tab bar at the top with clickable tabs showing page titles
+  - Keyboard shortcuts: Ctrl+T (new tab), Ctrl+W (close tab), Ctrl+Tab/Ctrl+Shift+Tab (switch tabs), Ctrl+1-9 (jump to tab)
+  - Each tab maintains its own history, scroll position, and link selection
+  - Open links in new tabs via Ctrl+click, middle-click, or Ctrl+Enter
+  - Tab state preserved when switching between tabs
 - Search and pagination for Known Hosts settings: Filter hosts by hostname and navigate through pages of 10 items for faster loading
 - TOFU (Trust On First Use) certificate change handling: When a server's certificate changes, users now see a warning modal with options to Accept, Reject, or View Details before proceeding
 - Certificate details modal: Compare old vs new certificate fingerprints with full SHA-256 hashes and trust timestamps

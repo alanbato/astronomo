@@ -1,5 +1,4 @@
 #nav-bar {
-    dock: top;
     height: auto;
     width: 100%;
 }
