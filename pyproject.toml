@@ -18,6 +18,8 @@ dependencies = [
     "tomli>=2.0.0; python_version < '3.11'",
     "typing_extensions>=4.0.0; python_version < '3.11'",
     "typer>=0.20.0",
+    "mapilli>=0.1.1",
+    "mototli>=0.1.1",
 ]
 
 [project.scripts]

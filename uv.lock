@@ -168,12 +168,14 @@ wheels = [
 
 [[package]]
 name = "astronomo"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "emoji" },
     { name = "feedparser" },
     { name = "humanize" },
+    { name = "mapilli" },
+    { name = "mototli" },
     { name = "nauyaca" },
     { name = "textual", extra = ["syntax"] },
     { name = "tomli", marker = "python_full_version < '3.11'" },
@@ -206,6 +208,8 @@ requires-dist = [
     { name = "emoji", specifier = ">=2.0.0" },
     { name = "feedparser", specifier = ">=6.0.0" },
     { name = "humanize", specifier = ">=4.0.0" },
+    { name = "mapilli", specifier = ">=0.1.1" },
+    { name = "mototli", specifier = ">=0.1.1" },
     { name = "nauyaca", specifier = ">=0.1.0" },
     { name = "textual", extras = ["syntax"], specifier = ">=6.6.0" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
@@ -977,6 +981,20 @@ wheels = [
 ]
 
 [[package]]
+name = "mapilli"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rich" },
+    { name = "structlog" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/8e/89bfdba58ab6e84405ec0e494d0882de0703b7fdacb5cf9c368bb879881c/mapilli-0.1.1.tar.gz", hash = "sha256:d3cc2a912303cad75022018935c563bd05efd312042fa196711788f5d7464669", size = 9190, upload-time = "2025-12-31T21:34:20.308Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a9/26/2bca47db866bd782fdc74061ac4652a1b959cd27e106a846bb9a12d1293b/mapilli-0.1.1-py3-none-any.whl", hash = "sha256:fe31d99cc49a382cc46c93fa2548e194b26eeaba9672f37a9620091f67901830", size = 12908, upload-time = "2025-12-31T21:34:18.705Z" },
+]
+
+[[package]]
 name = "markdown"
 version = "3.10"
 source = { registry = "https://pypi.org/simple" }
@@ -1250,6 +1268,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ca/0d/dab7b08ca7e5a38b033cd83565bb0f95f05e8f3df7bc273e793c2ad3576e/mkdocstrings_python-2.0.0.tar.gz", hash = "sha256:4d872290f595221740a304bebca5b3afa4beafe84cc6fd27314d52dc3fbb4676", size = 199113, upload-time = "2025-11-27T16:44:44.894Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/de/063481352688c3a1468c51c10b6cfb858d5e35dfef8323d9c83c4f2faa03/mkdocstrings_python-2.0.0-py3-none-any.whl", hash = "sha256:1d552dda109d47e4fddecbb1f06f9a86699c1b073e8b166fba89eeef0a0ffec6", size = 104803, upload-time = "2025-11-27T16:44:43.441Z" },
+]
+
+[[package]]
+name = "mototli"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rich" },
+    { name = "structlog" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a0/5e/cb07611cae463ad785c5a4bf43fb455a4f384468e9f46d7739fb4684e3e5/mototli-0.1.1.tar.gz", hash = "sha256:e1c41d6793520ad0c7a387542bb2a92a7f2696561f8515ff4dfa2104b76322f4", size = 36623, upload-time = "2026-01-01T08:37:13.134Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/76/4b/4be272839864fced62a5bed21e76c72575e319e6bfed16e1e54129488b1e/mototli-0.1.1-py3-none-any.whl", hash = "sha256:ad3ad7b577a0278324a80c64de2141815fefee460ffe9863117017728b76cf8c", size = 48976, upload-time = "2026-01-01T08:37:11.703Z" },
 ]
 
 [[package]]

@@ -49,11 +49,12 @@ from astronomo.widgets import (
     SessionIdentityResult,
 )
 
-# Register gemini as a valid URL scheme for proper urljoin behavior
-if "gemini" not in uses_relative:
-    uses_relative.append("gemini")
-if "gemini" not in uses_netloc:
-    uses_netloc.append("gemini")
+# Register URL schemes for proper urljoin behavior
+for scheme in ("gemini", "gopher", "finger"):
+    if scheme not in uses_relative:
+        uses_relative.append(scheme)
+    if scheme not in uses_netloc:
+        uses_netloc.append(scheme)
 
 # Sentinel value for session identity choice "not yet prompted"
 _NOT_YET_PROMPTED = object()
@@ -165,14 +166,13 @@ class Astronomo(App[None]):
             viewer.update_content(parse_gemtext(welcome_text))
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle URL submission and fetch Gemini content."""
+        """Handle URL submission and fetch content."""
         url = event.value.strip()
         if not url:
             return
 
-        # Add gemini:// prefix if not present
-        if not url.startswith("gemini://"):
-            url = f"gemini://{url}"
+        # Normalize URL with smart scheme detection
+        url = self._normalize_url(url)
 
         viewer = self.query_one("#content", GemtextViewer)
         loading_text = f"# Fetching\n\n{url}\n\nPlease wait..."
@@ -191,22 +191,40 @@ class Astronomo(App[None]):
         add_to_history: bool = True,
         identity: Identity | None = None,
         skip_session_prompt: bool = False,
+        search_query: str | None = None,
     ) -> None:
-        """Fetch and display a Gemini resource.
+        """Fetch and display a resource via any supported protocol.
 
         Args:
             url: The URL to fetch
             add_to_history: Whether to add this fetch to history (default True)
-            identity: Optional identity to use (overrides auto-selection)
+            identity: Optional identity to use (overrides auto-selection, Gemini only)
             skip_session_prompt: If True, skip session identity modal (internal use)
+            search_query: Search query for Gopher type 7 items
         """
         import asyncio
 
         viewer = self.query_one("#content", GemtextViewer)
+        parsed = urlparse(url)
+        scheme = parsed.scheme.lower() or "gemini"
 
         # Save current page state to history before navigating away
         if not self._navigating_history and add_to_history:
             self._update_current_history_state()
+
+        # Route to appropriate protocol handler
+        if scheme == "gopher":
+            await self._fetch_gopher(url, viewer, add_to_history, search_query)
+            return
+        elif scheme == "finger":
+            await self._fetch_finger(url, viewer, add_to_history)
+            return
+        elif scheme != "gemini":
+            error = f"# Unsupported Protocol\n\nScheme '{scheme}' is not supported."
+            viewer.update_content(parse_gemtext(error))
+            return
+
+        # Gemini protocol handling continues below...
 
         # Session identity selection: prompt user before making request
         if identity is None and not skip_session_prompt:
@@ -372,10 +390,19 @@ class Astronomo(App[None]):
     ) -> None:
         """Handle link activation from the viewer."""
         link_url = message.link.url
+        parsed = urlparse(link_url)
 
-        # Resolve relative URLs
-        if not link_url.startswith("gemini://"):
-            # Relative URL - resolve it against current URL
+        # Check if it's an absolute URL with a supported scheme
+        if parsed.scheme in ("gemini", "gopher", "finger"):
+            pass  # Use as-is
+        elif parsed.scheme in ("http", "https"):
+            self._open_external_link(link_url)
+            return
+        elif parsed.scheme:
+            self.notify(f"Unsupported scheme: {parsed.scheme}", severity="warning")
+            return
+        else:
+            # Relative URL - resolve against current URL
             link_url = urljoin(self.current_url, link_url)
 
         # Update URL input and fetch
@@ -694,6 +721,217 @@ class Astronomo(App[None]):
             ),
             handle_result,
         )
+
+    # -------------------------------------------------------------------------
+    # Protocol Handlers (Finger, Gopher)
+    # -------------------------------------------------------------------------
+
+    async def _fetch_finger(
+        self, url: str, viewer: GemtextViewer, add_to_history: bool
+    ) -> None:
+        """Fetch and display a Finger resource.
+
+        Args:
+            url: The finger:// URL to fetch
+            viewer: The GemtextViewer to update
+            add_to_history: Whether to add to history
+        """
+        import asyncio
+
+        from astronomo.formatters.finger import fetch_finger
+
+        try:
+            parsed_lines = await fetch_finger(url, timeout=self.config_manager.timeout)
+
+            self.current_url = url
+            self.query_one("#url-input", Input).value = url
+            viewer.update_content(parsed_lines)
+
+            if not self._navigating_history and add_to_history:
+                entry = HistoryEntry(
+                    url=url,
+                    content=parsed_lines,
+                    scroll_position=0,
+                    link_index=0,
+                    status=20,
+                    meta="",
+                    mime_type="text/plain",
+                )
+                self.history.push(entry)
+                self._update_navigation_buttons()
+        except asyncio.TimeoutError:
+            timeout = self.config_manager.timeout
+            error_text = (
+                f"# Timeout Error\n\n"
+                f"The request to {url} timed out after {timeout} seconds.\n\n"
+                f"The server may be down or not responding."
+            )
+            viewer.update_content(parse_gemtext(error_text))
+        except Exception as e:
+            error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
+            viewer.update_content(parse_gemtext(error_text))
+
+    async def _fetch_gopher(
+        self,
+        url: str,
+        viewer: GemtextViewer,
+        add_to_history: bool,
+        search_query: str | None,
+    ) -> None:
+        """Fetch and display a Gopher resource.
+
+        Args:
+            url: The gopher:// URL to fetch
+            viewer: The GemtextViewer to update
+            add_to_history: Whether to add to history
+            search_query: Search query for type 7 items
+        """
+        import asyncio
+
+        from astronomo.formatters.gopher import fetch_gopher
+
+        try:
+            result = await fetch_gopher(
+                url,
+                timeout=self.config_manager.timeout,
+                search_query=search_query,
+            )
+
+            # Handle search input required (type 7)
+            if result.requires_search:
+                self.call_later(
+                    self._handle_gopher_search,
+                    url,
+                    result.search_prompt or "Search",
+                )
+                return
+
+            # Handle binary download
+            if result.is_binary and result.binary_data:
+                await self._handle_gopher_download(
+                    result.filename or "download", result.binary_data
+                )
+                # Still show the content message
+                self.current_url = url
+                self.query_one("#url-input", Input).value = url
+                viewer.update_content(result.content)
+                return
+
+            self.current_url = url
+            self.query_one("#url-input", Input).value = url
+            viewer.update_content(result.content)
+
+            if not self._navigating_history and add_to_history:
+                entry = HistoryEntry(
+                    url=url,
+                    content=result.content,
+                    scroll_position=0,
+                    link_index=0,
+                    status=20,
+                    meta="",
+                    mime_type="text/gopher",
+                )
+                self.history.push(entry)
+                self._update_navigation_buttons()
+        except asyncio.TimeoutError:
+            timeout = self.config_manager.timeout
+            error_text = (
+                f"# Timeout Error\n\n"
+                f"The request to {url} timed out after {timeout} seconds.\n\n"
+                f"The server may be down or not responding."
+            )
+            viewer.update_content(parse_gemtext(error_text))
+        except Exception as e:
+            error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
+            viewer.update_content(parse_gemtext(error_text))
+
+    def _handle_gopher_search(self, url: str, prompt: str) -> None:
+        """Handle Gopher type 7 search by showing InputModal.
+
+        Args:
+            url: The search URL to submit to
+            prompt: The prompt to show the user
+        """
+
+        def on_result(query: str | None) -> None:
+            if query is not None:
+                self.get_url(url, search_query=query)
+
+        self.push_screen(
+            InputModal(prompt=prompt, url=url, sensitive=False),
+            on_result,
+        )
+
+    async def _handle_gopher_download(self, filename: str, data: bytes) -> None:
+        """Handle Gopher binary download - saves to ~/Downloads.
+
+        Args:
+            filename: Suggested filename for the download
+            data: Binary data to save
+        """
+        from pathlib import Path
+
+        download_dir = Path("~/Downloads").expanduser()
+        download_dir.mkdir(parents=True, exist_ok=True)
+
+        filepath = download_dir / filename
+        counter = 1
+        while filepath.exists():
+            stem, suffix = filepath.stem, filepath.suffix
+            filepath = download_dir / f"{stem}_{counter}{suffix}"
+            counter += 1
+
+        filepath.write_bytes(data)
+        self.notify(f"Downloaded: {filepath}", severity="information")
+
+    def _open_external_link(self, url: str) -> None:
+        """Open HTTP/HTTPS links in system browser.
+
+        Args:
+            url: The URL to open
+        """
+        import subprocess
+        import sys
+
+        try:
+            if sys.platform == "darwin":
+                subprocess.run(["open", url], check=True)
+            elif sys.platform == "win32":
+                subprocess.run(["start", url], shell=True, check=True)
+            else:  # Linux/BSD
+                subprocess.run(["xdg-open", url], check=True)
+            self.notify(f"Opened in browser: {url}", severity="information")
+        except Exception as e:
+            self.notify(f"Failed to open browser: {e}", severity="error")
+
+    def _normalize_url(self, url: str) -> str:
+        """Normalize URL, auto-detecting scheme if not present.
+
+        Detection rules:
+        1. Already has scheme -> return as-is
+        2. Contains @ but no / before it -> finger:// (user@host pattern)
+        3. Hostname starts with "gopher." -> gopher://
+        4. Default -> gemini://
+
+        Args:
+            url: The URL to normalize
+
+        Returns:
+            URL with appropriate scheme prefix
+        """
+        if "://" in url:
+            return url  # Already has scheme
+
+        # finger://user@host pattern
+        if "@" in url and "/" not in url.split("@")[0]:
+            return f"finger://{url}"
+
+        # gopher.* or :70 port
+        if url.startswith("gopher.") or ":70" in url:
+            return f"gopher://{url}"
+
+        # Default to Gemini
+        return f"gemini://{url}"
 
     def _update_current_history_state(self) -> None:
         """Update the current history entry with current scroll/link state."""

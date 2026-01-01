@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Multi-protocol support: Astronomo now supports browsing Gopher (via `mototli`) and Finger (via `mapilli`) protocols in addition to Gemini
+- Smart URL detection: URLs in the address bar are automatically prefixed with the appropriate scheme (`user@host` → `finger://`, `gopher.*` → `gopher://`, otherwise `gemini://`)
+- Gopher protocol features:
+  - Directory listings with type indicators ([DIR], [TXT], [SEARCH], [BIN], [IMG])
+  - Text file viewing with preformatted display
+  - Search support (type 7) via reused InputModal
+  - Binary file downloads saved to ~/Downloads
+- Finger protocol: User information displayed as preformatted text
+- Cross-protocol link navigation: Click links to navigate between Gemini, Gopher, and Finger resources
+- HTTP/HTTPS links now open in the system browser instead of showing an error
+
 ## [0.5.0] - 2025-12-31
 
 ### Added
