@@ -12,6 +12,7 @@ from astronomo.widgets.settings import (
     AppearanceSettings,
     BrowsingSettings,
     CertificatesSettings,
+    KnownHostsSettings,
 )
 
 if TYPE_CHECKING:
@@ -50,14 +51,15 @@ class SettingsScreen(ModalScreen[None]):
         padding: 1;
     }
 
-    AppearanceSettings, BrowsingSettings, CertificatesSettings {
+    AppearanceSettings, BrowsingSettings, CertificatesSettings, KnownHostsSettings {
         height: 1fr;
         width: 1fr;
     }
 
     AppearanceSettings VerticalScroll,
     BrowsingSettings VerticalScroll,
-    CertificatesSettings VerticalScroll {
+    CertificatesSettings VerticalScroll,
+    KnownHostsSettings VerticalScroll {
         height: 1fr;
     }
 
@@ -86,6 +88,8 @@ class SettingsScreen(ModalScreen[None]):
                     yield BrowsingSettings(app.config_manager)
                 with TabPane("Certificates", id="tab-certificates"):
                     yield CertificatesSettings(app.identities)
+                with TabPane("Known Hosts", id="tab-known-hosts"):
+                    yield KnownHostsSettings()
             yield Static("Press Escape or Ctrl+, to close", id="settings-hint")
 
     def action_dismiss_settings(self) -> None:

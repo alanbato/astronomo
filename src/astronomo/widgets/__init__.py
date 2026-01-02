@@ -2,6 +2,14 @@
 
 from astronomo.widgets.add_bookmark_modal import AddBookmarkModal
 from astronomo.widgets.bookmarks_sidebar import BookmarksSidebar
+from astronomo.widgets.certificate_changed_modal import (
+    CertificateChangedModal,
+    CertificateChangedResult,
+)
+from astronomo.widgets.certificate_details_modal import (
+    CertificateDetailsModal,
+    CertificateDetailsResult,
+)
 from astronomo.widgets.edit_item_modal import EditItemModal
 from astronomo.widgets.gemtext_viewer import GemtextViewer
 from astronomo.widgets.identity_error_modal import (
@@ -20,6 +28,10 @@ from astronomo.widgets.session_identity_modal import (
 __all__ = [
     "AddBookmarkModal",
     "BookmarksSidebar",
+    "CertificateChangedModal",
+    "CertificateChangedResult",
+    "CertificateDetailsModal",
+    "CertificateDetailsResult",
     "EditItemModal",
     "GemtextViewer",
     "IdentityErrorModal",

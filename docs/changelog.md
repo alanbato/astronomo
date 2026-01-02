@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- TOFU (Trust On First Use) certificate change handling: When a server's certificate changes, users now see a warning modal with options to Accept, Reject, or View Details before proceeding
+- Certificate details modal: Compare old vs new certificate fingerprints with full SHA-256 hashes and trust timestamps
+- Known Hosts management: New "Known Hosts" tab in Settings (Ctrl+,) to view and revoke trusted server certificates
 - Starry night ASCII art in the welcome message displayed when launching without a URL
 - Multi-protocol support: Astronomo now supports browsing Gopher (via `mototli`) and Finger (via `mapilli`) protocols in addition to Gemini
 - Smart URL detection: URLs in the address bar are automatically prefixed with the appropriate scheme (`user@host` → `finger://`, `gopher.*` → `gopher://`, otherwise `gemini://`)

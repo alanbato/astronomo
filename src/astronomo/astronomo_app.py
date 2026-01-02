@@ -20,6 +20,7 @@ else:
     import tomli as tomllib
 
 from nauyaca.client import GeminiClient
+from nauyaca.security.tofu import CertificateChangedError, TOFUDatabase
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
@@ -36,6 +37,10 @@ from astronomo.screens import FeedsScreen, SettingsScreen
 from astronomo.widgets import (
     AddBookmarkModal,
     BookmarksSidebar,
+    CertificateChangedModal,
+    CertificateChangedResult,
+    CertificateDetailsModal,
+    CertificateDetailsResult,
     EditItemModal,
     GemtextViewer,
     IdentityErrorModal,
@@ -414,6 +419,16 @@ class Astronomo(App[None]):
                 f"The server may be down or not responding. Please try again later."
             )
             viewer.update_content(parse_gemtext(error_text))
+        except CertificateChangedError as e:
+            # TOFU violation - server certificate has changed
+            self.call_later(
+                self._handle_certificate_changed,
+                url,
+                e.hostname,
+                e.port,
+                e.old_fingerprint,
+                e.new_fingerprint,
+            )
         except Exception as e:
             error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
             viewer.update_content(parse_gemtext(error_text))
@@ -622,6 +637,135 @@ class Astronomo(App[None]):
             ),
             handle_result,
         )
+
+    def _handle_certificate_changed(
+        self,
+        url: str,
+        hostname: str,
+        port: int,
+        old_fingerprint: str,
+        new_fingerprint: str,
+    ) -> None:
+        """Handle TOFU violation: server certificate has changed.
+
+        Args:
+            url: The URL being accessed
+            hostname: The server hostname
+            port: The server port
+            old_fingerprint: The previously trusted fingerprint
+            new_fingerprint: The new certificate fingerprint
+        """
+        # Get host info from TOFU database for details modal
+        tofu_db = TOFUDatabase()
+        host_info = tofu_db.get_host_info(hostname, port)
+        first_seen = host_info.get("first_seen") if host_info else None
+        last_seen = host_info.get("last_seen") if host_info else None
+
+        def handle_result(result: CertificateChangedResult | None) -> None:
+            if result is None:
+                return
+
+            if result.action == "accept":
+                self._accept_changed_certificate(url, hostname, port, new_fingerprint)
+            elif result.action == "details":
+                self._show_certificate_details(
+                    url,
+                    hostname,
+                    port,
+                    old_fingerprint,
+                    new_fingerprint,
+                    first_seen,
+                    last_seen,
+                )
+            # "reject" action: do nothing, just leave the error displayed
+
+        self.push_screen(
+            CertificateChangedModal(
+                hostname=hostname,
+                port=port,
+                old_fingerprint=old_fingerprint,
+                new_fingerprint=new_fingerprint,
+            ),
+            handle_result,
+        )
+
+    def _show_certificate_details(
+        self,
+        url: str,
+        hostname: str,
+        port: int,
+        old_fingerprint: str,
+        new_fingerprint: str,
+        first_seen: str | None,
+        last_seen: str | None,
+    ) -> None:
+        """Show detailed certificate comparison modal.
+
+        Args:
+            url: The URL being accessed
+            hostname: The server hostname
+            port: The server port
+            old_fingerprint: The previously trusted fingerprint
+            new_fingerprint: The new certificate fingerprint
+            first_seen: When the host was first trusted
+            last_seen: When the host was last accessed
+        """
+
+        def handle_result(result: CertificateDetailsResult | None) -> None:
+            if result is None:
+                return
+
+            if result.action == "accept":
+                self._accept_changed_certificate(url, hostname, port, new_fingerprint)
+            # "reject" action: do nothing
+
+        self.push_screen(
+            CertificateDetailsModal(
+                hostname=hostname,
+                port=port,
+                old_fingerprint=old_fingerprint,
+                new_fingerprint=new_fingerprint,
+                first_seen=first_seen,
+                last_seen=last_seen,
+            ),
+            handle_result,
+        )
+
+    def _accept_changed_certificate(
+        self, url: str, hostname: str, port: int, new_fingerprint: str
+    ) -> None:
+        """Accept a changed certificate and retry the request.
+
+        This revokes the old trust and retries the request. The retry will
+        encounter a "first use" scenario and auto-trust the certificate.
+
+        Security note: If the certificate changes again between revoke and
+        retry (e.g., MITM attack), the user will see another warning modal
+        because CertificateChangedError or a new first-use prompt will occur.
+        This is the expected TOFU behavior.
+
+        Args:
+            url: The URL to retry
+            hostname: The server hostname
+            port: The server port
+            new_fingerprint: The new certificate fingerprint the user reviewed
+        """
+        try:
+            tofu_db = TOFUDatabase()
+            tofu_db.revoke(hostname, port)
+            self.notify(
+                f"Trusting new certificate for {hostname}:{port}",
+                severity="information",
+            )
+        except Exception as e:
+            self.notify(
+                f"Failed to update trust database: {e}",
+                severity="error",
+            )
+            return
+
+        # Retry the request - it will be treated as first use and auto-trusted
+        self.get_url(url)
 
     def _get_session_prefix_for_url(self, url: str) -> str:
         """Get host-level prefix for session identity storage.
