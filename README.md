@@ -32,7 +32,7 @@ Whether you're exploring Geminispace for the first time or looking for a better 
 | **Client Certificates** | Yes | Yes | No |
 | **TOFU Security** | Yes | Yes | No |
 | **Tabs** | Coming soon | Yes | No |
-| **Multi-protocol** | Gemini-focused | Proxying | Gopher+Finger |
+| **Multi-protocol** | Gemini + Gopher + Finger | Proxying | Gopher+Finger |
 | **Development** | Active | Maintenance mode | Maintenance mode |
 | **Language** | Python | Go | Go |
 
@@ -107,6 +107,24 @@ Seamless support for Gemini's input requests:
 - **Sensitive input** — Status 11 for password-style masked entry
 - **Byte counter** — Visual feedback for URL length limits
 
+### Multi-Protocol Support
+Browse beyond Gemini with native support for classic protocols:
+
+**Gopher Protocol:**
+- **Directory browsing** — Navigate Gopher menus with type indicators ([DIR], [TXT], [SEARCH])
+- **Text files** — View Gopher text documents with proper formatting
+- **Search support** — Interactive search queries (type 7)
+- **Binary downloads** — Download files to `~/Downloads`
+
+**Finger Protocol:**
+- **User queries** — Look up user information from Finger servers
+- **Flexible URLs** — Supports both `finger://user@host` and `finger://host/user` formats
+
+**Smart URL Detection:**
+- `user@host` → automatically uses `finger://`
+- `gopher.example.com` → automatically uses `gopher://`
+- Everything else → defaults to `gemini://`
+
 ### Configuration
 - **XDG-compliant** — Config stored at `~/.config/astronomo/`
 - **TOML format** — Human-readable with helpful comments
@@ -145,8 +163,14 @@ uv run astronomo
 # Launch Astronomo
 astronomo
 
-# Open a specific capsule
+# Open a Gemini capsule
 astronomo gemini://geminiprotocol.net/
+
+# Browse a Gopher server
+astronomo gopher://gopher.floodgap.com/
+
+# Query a Finger server (smart detection)
+astronomo user@example.com
 
 # Use a custom config file
 astronomo --config ~/my-config.toml
@@ -256,6 +280,11 @@ uv run textual run --dev src/astronomo/astronomo.py
 
 ## Links
 
+**Protocols:**
 - [Gemini Protocol](gemini://geminiprotocol.net/) — Learn about the Gemini protocol
+- [Gopher Protocol](https://en.wikipedia.org/wiki/Gopher_(protocol)) — The classic menu-driven protocol
+- [Finger Protocol](https://en.wikipedia.org/wiki/Finger_(protocol)) — User information lookup protocol
+
+**Development:**
 - [Textual Documentation](https://textual.textualize.io/) — The TUI framework powering Astronomo
 - [Nauyaca](https://github.com/alanbato/nauyaca) — Gemini protocol library for Python

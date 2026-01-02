@@ -121,6 +121,8 @@ nav:
   - Explanation:
       - explanation/index.md
       - Gemini Protocol: explanation/gemini-protocol.md
+      - Gopher Protocol: explanation/gopher-protocol.md
+      - Finger Protocol: explanation/finger-protocol.md
       - Architecture: explanation/architecture.md
   - Changelog: changelog.md
 

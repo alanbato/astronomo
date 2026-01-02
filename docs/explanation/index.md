@@ -14,6 +14,18 @@ Explanation guides are **understanding-oriented**. They clarify and illuminate a
 
     What is Gemini? Learn about the protocol Astronomo speaks.
 
+-   :material-rodent:{ .lg .middle } **[Gopher Protocol](gopher-protocol.md)**
+
+    ---
+
+    The classic menu-driven protocol from 1991.
+
+-   :material-hand-pointing-right:{ .lg .middle } **[Finger Protocol](finger-protocol.md)**
+
+    ---
+
+    User information lookup protocol from the early internet.
+
 -   :material-sitemap:{ .lg .middle } **[Architecture](architecture.md)**
 
     ---

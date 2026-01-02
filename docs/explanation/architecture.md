@@ -4,11 +4,13 @@ This page explains how Astronomo is built and how its components work together.
 
 ## Overview
 
-Astronomo is a terminal-based Gemini browser built with:
+Astronomo is a terminal-based multi-protocol browser built with:
 
 - **Python 3.10+** - Programming language
 - **Textual** - TUI (Terminal User Interface) framework
 - **Nauyaca** - Gemini protocol library
+- **Mototli** - Gopher protocol library
+- **Mapilli** - Finger protocol library
 - **TOML** - Configuration and data storage format
 
 ```mermaid
@@ -17,12 +19,20 @@ graph TB
     App[Astronomo App]
     Textual[Textual TUI]
     Nauyaca[Nauyaca Client]
-    Server[Gemini Server]
+    Mototli[Mototli Client]
+    Mapilli[Mapilli Client]
+    GeminiServer[Gemini Server]
+    GopherServer[Gopher Server]
+    FingerServer[Finger Server]
 
     User --> App
     App --> Textual
     App --> Nauyaca
-    Nauyaca --> Server
+    App --> Mototli
+    App --> Mapilli
+    Nauyaca --> GeminiServer
+    Mototli --> GopherServer
+    Mapilli --> FingerServer
     Textual --> Terminal[Terminal Display]
 ```
 
@@ -128,6 +138,23 @@ Storage:
 - Certificate files (`.crt`, `.key`) per identity
 - Host-to-identity mappings
 
+### Formatters (`formatters/`)
+
+Protocol-specific response formatters that convert content to Gemtext:
+
+**Gopher Formatter (`gopher.py`):**
+- Parses Gopher menu responses
+- Converts item types to visual indicators (`[DIR]`, `[TXT]`, etc.)
+- Handles search queries (type 7)
+- Manages binary downloads
+
+**Finger Formatter (`finger.py`):**
+- Parses Finger URLs (`finger://user@host`)
+- Wraps responses in preformatted blocks
+- Adds informative headings
+
+Both formatters output Gemtext-compatible content, allowing the same `GemtextViewer` widget to render all protocols uniformly.
+
 ## Widget Architecture
 
 ### GemtextViewer
@@ -207,6 +234,10 @@ src/astronomo/
 ├── identities.py        # Certificate management
 ├── response_handler.py  # Response processing
 ├── syntax.py            # Syntax highlighting
+├── formatters/          # Protocol formatters
+│   ├── __init__.py
+│   ├── gopher.py        # Gopher menu/content formatting
+│   └── finger.py        # Finger response formatting
 ├── screens/             # Full-screen views
 │   └── settings.py
 └── widgets/             # UI components

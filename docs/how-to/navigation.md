@@ -11,16 +11,19 @@ This guide covers efficient navigation techniques in Astronomo.
 3. Press ++enter++
 
 !!! tip
-    You can omit `gemini://` - Astronomo adds it automatically for bare URLs.
+    You can omit `gemini://` - Astronomo adds it automatically for bare URLs. See [Smart URL Detection](#smart-url-detection) for other protocols.
 
 ### From Command Line
 
 ```bash
-# Open directly to a URL
+# Open a Gemini capsule
 astronomo gemini://example.com/
 
-# Open to a path
-astronomo gemini://example.com/page.gmi
+# Browse a Gopher server
+astronomo gopher://gopher.floodgap.com/
+
+# Query a Finger server
+astronomo user@example.com
 ```
 
 ## Following Links
@@ -109,6 +112,73 @@ For sensitive input (status 11), the field is masked like a password field.
 Astronomo automatically follows redirects up to the configured limit (default: 5).
 
 If a redirect loop is detected or the limit is exceeded, you'll see an error message.
+
+## Multi-Protocol Navigation
+
+Astronomo supports browsing Gopher and Finger servers in addition to Gemini.
+
+### Smart URL Detection
+
+When you enter a URL without a scheme, Astronomo automatically detects the protocol:
+
+| Pattern | Detected Protocol |
+|---------|------------------|
+| `user@host` | `finger://user@host` |
+| `gopher.example.com` | `gopher://gopher.example.com` |
+| `host:70/...` | `gopher://host:70/...` |
+| Everything else | `gemini://...` |
+
+You can always specify the scheme explicitly (e.g., `gopher://example.com`).
+
+### Browsing Gopher
+
+Gopher menus display with type indicators:
+
+- `[DIR]` — Directory (click to enter)
+- `[TXT]` — Text file
+- `[SEARCH]` — Search input
+- `[BIN]` — Binary download
+- `[IMG]` — Image file
+- `[EXT]` — External HTTP link
+
+Navigate Gopher menus just like Gemini pages—use arrow keys or click to follow links.
+
+### Gopher Search
+
+When you activate a search item (`[SEARCH]`):
+
+1. A modal dialog prompts for your query
+2. Enter search terms and press ++enter++
+3. Results display as a new Gopher menu
+
+### Downloading Gopher Files
+
+Binary files (type 9, images, etc.) download automatically:
+
+1. Activate the `[BIN]` or `[IMG]` link
+2. File saves to `~/Downloads/`
+3. A notification confirms the download
+
+Duplicate filenames are auto-incremented (e.g., `file(1).txt`).
+
+### Querying Finger
+
+To look up user information:
+
+1. Enter `user@host` in the address bar
+2. Press ++enter++
+3. User info displays as preformatted text
+
+Or use the explicit format: `finger://user@host`
+
+### Cross-Protocol Links
+
+Pages can link between protocols. For example:
+
+- A Gemini page can link to `gopher://...`
+- A Gopher menu can link to `finger://...`
+
+HTTP/HTTPS links open in your system's default browser.
 
 ## Tips for Efficient Browsing
 
