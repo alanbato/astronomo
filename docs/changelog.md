@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Starry night ASCII art in the welcome message displayed when launching without a URL
 - Multi-protocol support: Astronomo now supports browsing Gopher (via `mototli`) and Finger (via `mapilli`) protocols in addition to Gemini
 - Smart URL detection: URLs in the address bar are automatically prefixed with the appropriate scheme (`user@host` → `finger://`, `gopher.*` → `gopher://`, otherwise `gemini://`)
 - Gopher protocol features:

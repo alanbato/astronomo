@@ -158,9 +158,42 @@ class Astronomo(App[None]):
             viewer.focus()
             self.get_url(url)
         else:
-            # Show welcome message
+            # Show welcome message with starry night ASCII art
+            starry_night = """\
+   '                                                   o         .:'                           '       '
+        _|_     '                     .                      _.::'                  \\                        o  o   .
+         |                 '     '              +           (_.'           .         \\  .      +
+ '              o       o                                                         '   *                        +    |
+                                   |              |          .   +         +              +                       --o--
+                                 - o -      .    -+-                                                        '       |
+                                   |              |                   +          / '                '
+                                               '                                /        o
+                                                                               *
+                    .         .      .                 |                                    '                          +
+                                '                    - o -                                    .               .
+           .                  +                        |                            .
+                                                                                                       .
+   *                    +~~   o                                     .       .            '
+                                                                                                         .
+          o                                                               .          '
+                              .                    '  *                                        _..
+              o                                                                              '`-. `.
+   .                                   .   '                |                        .           \\  \\
+                   .                          +           --o--                          '       |  |                  .
+          .                                                 |                  +                 /  /   o
+                                             '                          '            .:'  +  _.-`_.`           +
+                                                                  +              _.::'        '''                '
+. *                                         .                                   (_.'
+                                              \\                     .:'                                '
+                                               \\   .            _.::'       '      o   /
+   +        ' o                   /             *         .    (_.'    *              /  _|_
+                 ~~+      .      /                                                   *    |           '  .      +
+       .                        *           +        +       +
+                                    +                                                            .                      """
             welcome_text = (
-                "# Welcome to Astronomo!\n\nEnter a URL above to get started.\n\n"
+                "# Welcome to Astronomo!\n\n"
+                "```\n" + starry_night + "\n```\n\n"
+                "Enter a URL above to get started.\n\n"
                 "Supported protocols: Gemini, Gopher, Finger"
             )
             viewer.update_content(parse_gemtext(welcome_text))
