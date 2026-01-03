@@ -122,7 +122,7 @@ The project uses a simple structure with the main application code in `src/astro
 - `appearance.py`: Theme selection panel
 - `browsing.py`: Browsing preferences panel
 - `certificates.py`: Identity/certificate management panel
-- `known_hosts.py`: TOFU known hosts management (view/revoke trusted servers)
+- `known_hosts.py`: TOFU known hosts management (view/revoke trusted servers) with search filtering and pagination (10 items per page)
 
 ### Certificate Widgets (`src/astronomo/widgets/certificates/`)
 - `create_modal.py`: Modal for creating new identities

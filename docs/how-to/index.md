@@ -22,3 +22,4 @@ How-to guides are **task-oriented**. They guide you through the steps to solve r
 ### Security
 
 - **[Certificates](certificates.md)** - Create and manage client certificates for authenticated sites
+- **[Known Hosts](known-hosts.md)** - Manage trusted server certificates (TOFU)

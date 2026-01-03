@@ -106,8 +106,10 @@ nav:
       - how-to/index.md
       - Navigation: how-to/navigation.md
       - Bookmarks: how-to/bookmarks.md
+      - Feeds: how-to/feeds.md
       - Configuration: how-to/configure.md
       - Certificates: how-to/certificates.md
+      - Known Hosts: how-to/known-hosts.md
   - Reference:
       - reference/index.md
       - Keybindings: reference/keybindings.md

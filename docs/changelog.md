@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Search and pagination for Known Hosts settings: Filter hosts by hostname and navigate through pages of 10 items for faster loading
 - TOFU (Trust On First Use) certificate change handling: When a server's certificate changes, users now see a warning modal with options to Accept, Reject, or View Details before proceeding
 - Certificate details modal: Compare old vs new certificate fingerprints with full SHA-256 hashes and trust timestamps
 - Known Hosts management: New "Known Hosts" tab in Settings (Ctrl+,) to view and revoke trusted server certificates
@@ -25,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Command-line URLs with explicit protocols (e.g., `astronomo gopher://...`) are no longer incorrectly prefixed with `gemini://`
+- Known Hosts settings tab now correctly handles hostnames with periods (e.g., `station.martinrue.com`) by sanitizing widget IDs
 
 ## [0.5.0] - 2025-12-31
 

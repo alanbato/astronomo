@@ -86,6 +86,7 @@ Full support for authenticated Gemini sites:
 Trust On First Use security via [Nauyaca](https://github.com/alanbato/nauyaca):
 - **Automatic trust** — Certificates are stored on first connection
 - **Change detection** — Warns if a server's certificate changes unexpectedly
+- **Known Hosts management** — View, search, and revoke trusted servers in Settings (Ctrl+,)
 - **SQLite storage** — Known hosts persisted at `~/.nauyaca/tofu.db`
 
 ### Theming
@@ -244,7 +245,6 @@ Astronomo is actively developed. Here's what's coming next:
 - **Search Engine Integration** — Quick access to Gemini search engines
 
 **Phase 3 — Advanced Features:**
-- **TOFU Management UI** — View and manage known hosts
 - **Downloads** — Save pages and files to disk
 - **Custom Keybindings** — Vi/Emacs-style key configurations
 
