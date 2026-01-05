@@ -383,6 +383,33 @@ class Astronomo(App[None]):
                 self.get_url(redirect_url, add_to_history=add_to_history)
                 return
 
+            # Handle binary content (non-text MIME types)
+            mime_type = response.mime_type or "text/gemini"
+            if not mime_type.startswith("text/"):
+                # Binary file - download to ~/Downloads
+                parsed_url = urlparse(url)
+                filename = parsed_url.path.split("/")[-1] or "download"
+                # Ensure body is bytes
+                body = response.body
+                if isinstance(body, str):
+                    body = body.encode("utf-8")
+                if body:
+                    await self._handle_binary_download(filename, body, mime_type)
+                    # Show success message
+                    success_text = (
+                        f"# Download Complete\n\n"
+                        f"File: {filename}\n"
+                        f"Type: {mime_type}\n\n"
+                        f"Saved to ~/Downloads"
+                    )
+                    viewer.update_content(parse_gemtext(success_text))
+                else:
+                    error_text = (
+                        f"# Error\n\nEmpty response body for binary file: {url}"
+                    )
+                    viewer.update_content(parse_gemtext(error_text))
+                return
+
             # Store current URL for relative link resolution
             self.current_url = url
 
@@ -1046,10 +1073,28 @@ class Astronomo(App[None]):
             filename: Suggested filename for the download
             data: Binary data to save
         """
-        from pathlib import Path
+        await self._handle_binary_download(filename, data)
+
+    async def _handle_binary_download(
+        self, filename: str, data: bytes, mime_type: str | None = None
+    ) -> None:
+        """Handle binary download - saves to ~/Downloads.
+
+        Args:
+            filename: Suggested filename for the download
+            data: Binary data to save
+            mime_type: Optional MIME type to infer extension if filename lacks one
+        """
+        import mimetypes
 
         download_dir = Path("~/Downloads").expanduser()
         download_dir.mkdir(parents=True, exist_ok=True)
+
+        # If filename has no extension, try to add one based on MIME type
+        if mime_type and "." not in filename:
+            ext = mimetypes.guess_extension(mime_type)
+            if ext:
+                filename = filename + ext
 
         filepath = download_dir / filename
         counter = 1
