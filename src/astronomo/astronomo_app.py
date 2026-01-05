@@ -394,15 +394,37 @@ class Astronomo(App[None]):
                 if isinstance(body, str):
                     body = body.encode("utf-8")
                 if body:
-                    await self._handle_binary_download(filename, body, mime_type)
-                    # Show success message
+                    filepath = await self._handle_binary_download(
+                        filename, body, mime_type
+                    )
+                    # Show success message with Open link
                     success_text = (
                         f"# Download Complete\n\n"
-                        f"File: {filename}\n"
+                        f"File: {filepath.name}\n"
                         f"Type: {mime_type}\n\n"
-                        f"Saved to ~/Downloads"
+                        f"Saved to ~/Downloads\n\n"
+                        f"=> file://{filepath} 📂 Open File"
                     )
-                    viewer.update_content(parse_gemtext(success_text))
+                    parsed_lines = parse_gemtext(success_text)
+                    viewer.update_content(parsed_lines)
+
+                    # Update state and history
+                    self.current_url = url
+                    url_input = self.query_one("#url-input", Input)
+                    url_input.value = url
+
+                    if not self._navigating_history and add_to_history:
+                        entry = HistoryEntry(
+                            url=url,
+                            content=parsed_lines,
+                            scroll_position=0,
+                            link_index=0,
+                            status=response.status,
+                            meta=response.meta,
+                            mime_type=mime_type,
+                        )
+                        self.history.push(entry)
+                        self._update_navigation_buttons()
                 else:
                     error_text = (
                         f"# Error\n\nEmpty response body for binary file: {url}"
@@ -472,6 +494,10 @@ class Astronomo(App[None]):
             pass  # Use as-is
         elif parsed.scheme in ("http", "https"):
             self._open_external_link(link_url)
+            return
+        elif parsed.scheme == "file":
+            # Local file - open with system default application
+            self._open_local_file(parsed.path)
             return
         elif parsed.scheme:
             self.notify(f"Unsupported scheme: {parsed.scheme}", severity="warning")
@@ -1012,13 +1038,34 @@ class Astronomo(App[None]):
 
             # Handle binary download
             if result.is_binary and result.binary_data:
-                await self._handle_gopher_download(
-                    result.filename or "download", result.binary_data
+                filename = result.filename or "download"
+                filepath = await self._handle_binary_download(
+                    filename, result.binary_data
                 )
-                # Still show the content message
+                # Show success message with Open link
+                success_text = (
+                    f"# Download Complete\n\n"
+                    f"File: {filepath.name}\n\n"
+                    f"Saved to ~/Downloads\n\n"
+                    f"=> file://{filepath} 📂 Open File"
+                )
+                parsed_lines = parse_gemtext(success_text)
                 self.current_url = url
                 self.query_one("#url-input", Input).value = url
-                viewer.update_content(result.content)
+                viewer.update_content(parsed_lines)
+
+                if not self._navigating_history and add_to_history:
+                    entry = HistoryEntry(
+                        url=url,
+                        content=parsed_lines,
+                        scroll_position=0,
+                        link_index=0,
+                        status=20,
+                        meta="",
+                        mime_type="application/octet-stream",
+                    )
+                    self.history.push(entry)
+                    self._update_navigation_buttons()
                 return
 
             self.current_url = url
@@ -1066,24 +1113,18 @@ class Astronomo(App[None]):
             on_result,
         )
 
-    async def _handle_gopher_download(self, filename: str, data: bytes) -> None:
-        """Handle Gopher binary download - saves to ~/Downloads.
-
-        Args:
-            filename: Suggested filename for the download
-            data: Binary data to save
-        """
-        await self._handle_binary_download(filename, data)
-
     async def _handle_binary_download(
         self, filename: str, data: bytes, mime_type: str | None = None
-    ) -> None:
+    ) -> Path:
         """Handle binary download - saves to ~/Downloads.
 
         Args:
             filename: Suggested filename for the download
             data: Binary data to save
             mime_type: Optional MIME type to infer extension if filename lacks one
+
+        Returns:
+            Path to the saved file
         """
         import mimetypes
 
@@ -1105,6 +1146,7 @@ class Astronomo(App[None]):
 
         filepath.write_bytes(data)
         self.notify(f"Downloaded: {filepath}", severity="information")
+        return filepath
 
     def _open_external_link(self, url: str) -> None:
         """Open HTTP/HTTPS links in system browser.
@@ -1125,6 +1167,32 @@ class Astronomo(App[None]):
             self.notify(f"Opened in browser: {url}", severity="information")
         except Exception as e:
             self.notify(f"Failed to open browser: {e}", severity="error")
+
+    def _open_local_file(self, filepath: str) -> None:
+        """Open a local file with the system's default application.
+
+        Args:
+            filepath: Path to the file to open
+        """
+        import subprocess
+        import sys
+
+        # Verify file exists
+        path = Path(filepath)
+        if not path.exists():
+            self.notify(f"File not found: {filepath}", severity="error")
+            return
+
+        try:
+            if sys.platform == "darwin":
+                subprocess.run(["open", filepath], check=True)
+            elif sys.platform == "win32":
+                subprocess.run(["start", "", filepath], shell=True, check=True)
+            else:  # Linux/BSD
+                subprocess.run(["xdg-open", filepath], check=True)
+            self.notify(f"Opened: {path.name}", severity="information")
+        except Exception as e:
+            self.notify(f"Failed to open file: {e}", severity="error")
 
     def _normalize_url(self, url: str) -> str:
         """Normalize URL, auto-detecting scheme if not present.
