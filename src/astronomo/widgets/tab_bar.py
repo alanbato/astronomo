@@ -17,7 +17,7 @@ class TabButton(Horizontal):
     DEFAULT_CSS = """
     TabButton {
         width: auto;
-        height: 3;
+        height: 1;
         min-width: 8;
         max-width: 25;
         padding: 0 1;
@@ -40,7 +40,7 @@ class TabButton(Horizontal):
 
     TabButton .tab-title {
         width: 1fr;
-        height: 3;
+        height: 1;
         content-align: left middle;
         text-overflow: ellipsis;
         overflow: hidden;
@@ -49,7 +49,7 @@ class TabButton(Horizontal):
     TabButton .tab-close {
         width: 3;
         min-width: 3;
-        height: 3;
+        height: 1;
         padding: 0;
         border: none;
         background: transparent;
@@ -125,31 +125,30 @@ class TabBar(Container):
     DEFAULT_CSS = """
     TabBar {
         dock: top;
-        height: 3;
+        height: 1;
         width: 100%;
         background: $surface-darken-1;
-        layout: horizontal;
     }
 
     TabBar > HorizontalScroll {
-        width: 1fr;
-        height: 3;
+        width: 100%;
+        height: 1;
         scrollbar-size: 0 0;
     }
 
     TabBar #new-tab-button {
         width: 4;
         min-width: 4;
-        height: 3;
+        height: 1;
         padding: 0;
         border: none;
-        background: $surface-darken-1;
+        background: $surface;
         color: $text-accent;
         content-align: center middle;
     }
 
     TabBar #new-tab-button:hover {
-        background: $surface;
+        background: $surface-lighten-1;
         color: $accent;
     }
     """
@@ -172,8 +171,8 @@ class TabBar(Container):
         """Message sent when new tab button is clicked."""
 
     def compose(self):
-        yield HorizontalScroll(id="tabs-scroll")
-        yield Button("+", id="new-tab-button")
+        with HorizontalScroll(id="tabs-scroll"):
+            yield Button("+", id="new-tab-button")
 
     def update_tabs(self, tabs: list[Tab], active_tab_id: str) -> None:
         """Update the tab bar with the current tab list.
@@ -183,16 +182,17 @@ class TabBar(Container):
             active_tab_id: ID of the currently active tab
         """
         scroll = self.query_one("#tabs-scroll", HorizontalScroll)
+        new_tab_button = self.query_one("#new-tab-button", Button)
 
         # Remove all existing tab buttons
         for button in list(scroll.query(TabButton)):
             button.remove()
 
-        # Add new tab buttons
+        # Add new tab buttons before the new-tab-button
         for tab in tabs:
             is_active = tab.id == active_tab_id
             button = TabButton(tab.id, tab.title, active=is_active)
-            scroll.mount(button)
+            scroll.mount(button, before=new_tab_button)
 
     def set_active_tab(self, tab_id: str) -> None:
         """Set which tab is visually active.

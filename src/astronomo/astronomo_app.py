@@ -31,7 +31,7 @@ from astronomo.config import ConfigManager
 from astronomo.feeds import FeedManager
 from astronomo.history import HistoryEntry, HistoryManager
 from astronomo.identities import Identity, IdentityManager
-from astronomo.parser import LineType, parse_gemtext
+from astronomo.parser import GemtextLine, LineType, parse_gemtext
 from astronomo.response_handler import format_response
 from astronomo.screens import FeedsScreen, SettingsScreen
 from astronomo.tabs import Tab, TabManager
@@ -187,34 +187,13 @@ class Astronomo(App[None]):
             yield BookmarksSidebar(self.bookmarks, id="bookmarks-sidebar")
         yield Footer()
 
-    def on_mount(self) -> None:
-        """Initialize the viewer with a welcome message or load initial URL."""
-        viewer = self.query_one("#content", GemtextViewer)
+    def _get_welcome_content(self) -> list[GemtextLine]:
+        """Generate the welcome message with starry night ASCII art.
 
-        # Use initial URL from command line, or fall back to configured home page
-        url = self._initial_url or self.config_manager.home_page
-
-        # Create initial tab
-        initial_title = "New Tab"
-        if url:
-            url = self._normalize_url(url)
-            initial_title = urlparse(url).netloc or url[:20]
-        self.tab_manager.create_tab(url=url or "", title=initial_title)
-        self._update_tab_bar()
-
-        if url:
-            # Update URL input
-            url_input = self.query_one("#url-input", Input)
-            url_input.value = url
-
-            # Show loading message and fetch
-            loading_text = f"# Fetching\n\n{url}\n\nPlease wait..."
-            viewer.update_content(parse_gemtext(loading_text))
-            viewer.focus()
-            self.get_url(url)
-        else:
-            # Show welcome message with starry night ASCII art
-            starry_night = """\
+        Returns:
+            List of parsed Gemtext lines for the welcome screen
+        """
+        starry_night = """\
    '                                                   o         .:'                           '       '
         _|_     '                     .                      _.::'                  \\                        o  o   .
          |                 '     '              +           (_.'           .         \\  .      +
@@ -245,13 +224,42 @@ class Astronomo(App[None]):
                  ~~+      .      /                                                   *    |           '  .      +
        .                        *           +        +       +
                                     +                                                            .                      """
-            welcome_text = (
-                "# Welcome to Astronomo!\n\n"
-                "```\n" + starry_night + "\n```\n\n"
-                "Enter a URL above to get started.\n\n"
-                "Supported protocols: Gemini, Gopher, Finger"
-            )
-            viewer.update_content(parse_gemtext(welcome_text))
+        welcome_text = (
+            "# Welcome to Astronomo!\n\n"
+            "```\n" + starry_night + "\n```\n\n"
+            "Enter a URL above to get started.\n\n"
+            "Supported protocols: Gemini, Gopher, Finger"
+        )
+        return parse_gemtext(welcome_text)
+
+    def on_mount(self) -> None:
+        """Initialize the viewer with a welcome message or load initial URL."""
+        viewer = self.query_one("#content", GemtextViewer)
+
+        # Use initial URL from command line, or fall back to configured home page
+        url = self._initial_url or self.config_manager.home_page
+
+        # Create initial tab
+        initial_title = "New Tab"
+        if url:
+            url = self._normalize_url(url)
+            initial_title = urlparse(url).netloc or url[:20]
+        self.tab_manager.create_tab(url=url or "", title=initial_title)
+        self._update_tab_bar()
+
+        if url:
+            # Update URL input
+            url_input = self.query_one("#url-input", Input)
+            url_input.value = url
+
+            # Show loading message and fetch
+            loading_text = f"# Fetching\n\n{url}\n\nPlease wait..."
+            viewer.update_content(parse_gemtext(loading_text))
+            viewer.focus()
+            self.get_url(url)
+        else:
+            # Show welcome message with starry night ASCII art
+            viewer.update_content(self._get_welcome_content())
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle URL submission and fetch content."""
@@ -1634,11 +1642,8 @@ class Astronomo(App[None]):
                 loading_text = f"# Fetching\n\n{tab.url}\n\nPlease wait..."
                 viewer.update_content(parse_gemtext(loading_text))
             else:
-                welcome_text = (
-                    "# Welcome to Astronomo!\n\nEnter a URL above to get started.\n\n"
-                    "Supported protocols: Gemini, Gopher, Finger"
-                )
-                viewer.update_content(parse_gemtext(welcome_text))
+                # Show welcome message with starry night ASCII art
+                viewer.update_content(self._get_welcome_content())
 
         # Update navigation buttons for this tab's history
         self._update_navigation_buttons()
