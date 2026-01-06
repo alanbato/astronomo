@@ -144,6 +144,9 @@ class SettingRow(Static):
                     id=widget_id,
                     classes="setting-widget setting-switch",
                 )
+            case _:
+                # This should never happen if all WidgetType cases are handled
+                raise ValueError(f"Unknown widget type: {self.definition.widget_type}")
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle select widget changes."""

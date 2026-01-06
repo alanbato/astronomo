@@ -36,6 +36,10 @@ def _format_success_response(url: str, response: GeminiResponse) -> list[Gemtext
     """Format a successful response by parsing the Gemtext body."""
     body = response.body or ""
 
+    # Ensure body is a string (decode bytes if necessary)
+    if isinstance(body, bytes):
+        body = body.decode("utf-8", errors="replace")
+
     # If empty body, return a simple message
     if not body.strip():
         return parse_gemtext("(empty response)")
