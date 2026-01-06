@@ -429,7 +429,7 @@ class Astronomo(App[None]):
                     error_text = (
                         f"# Error\n\nEmpty response body for binary file: {url}"
                     )
-                    viewer.update_content(parse_gemtext(error_text))
+                    self._display_error_page(url, error_text, viewer, add_to_history)
                 return
 
             # Store current URL for relative link resolution
@@ -467,7 +467,7 @@ class Astronomo(App[None]):
                 f"The request to {url} timed out after {timeout} seconds.\n\n"
                 f"The server may be down or not responding. Please try again later."
             )
-            viewer.update_content(parse_gemtext(error_text))
+            self._display_error_page(url, error_text, viewer, add_to_history)
         except CertificateChangedError as e:
             # TOFU violation - server certificate has changed
             self.call_later(
@@ -480,7 +480,7 @@ class Astronomo(App[None]):
             )
         except Exception as e:
             error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
-            viewer.update_content(parse_gemtext(error_text))
+            self._display_error_page(url, error_text, viewer, add_to_history)
 
     def on_gemtext_viewer_link_activated(
         self, message: GemtextViewer.LinkActivated
@@ -996,10 +996,10 @@ class Astronomo(App[None]):
                 f"The request to {url} timed out after {timeout} seconds.\n\n"
                 f"The server may be down or not responding."
             )
-            viewer.update_content(parse_gemtext(error_text))
+            self._display_error_page(url, error_text, viewer, add_to_history)
         except Exception as e:
             error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
-            viewer.update_content(parse_gemtext(error_text))
+            self._display_error_page(url, error_text, viewer, add_to_history)
 
     async def _fetch_gopher(
         self,
@@ -1091,10 +1091,10 @@ class Astronomo(App[None]):
                 f"The request to {url} timed out after {timeout} seconds.\n\n"
                 f"The server may be down or not responding."
             )
-            viewer.update_content(parse_gemtext(error_text))
+            self._display_error_page(url, error_text, viewer, add_to_history)
         except Exception as e:
             error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
-            viewer.update_content(parse_gemtext(error_text))
+            self._display_error_page(url, error_text, viewer, add_to_history)
 
     def _handle_gopher_search(self, url: str, prompt: str) -> None:
         """Handle Gopher type 7 search by showing InputModal.
@@ -1193,6 +1193,43 @@ class Astronomo(App[None]):
             self.notify(f"Opened: {path.name}", severity="information")
         except Exception as e:
             self.notify(f"Failed to open file: {e}", severity="error")
+
+    def _display_error_page(
+        self,
+        url: str,
+        error_text: str,
+        viewer: GemtextViewer,
+        add_to_history: bool,
+    ) -> None:
+        """Display an error page with proper history management.
+
+        Args:
+            url: The URL that caused the error
+            error_text: The error message in Gemtext format
+            viewer: The GemtextViewer to update
+            add_to_history: Whether to add to history
+        """
+        parsed_lines = parse_gemtext(error_text)
+        viewer.update_content(parsed_lines)
+
+        # Update state
+        self.current_url = url
+        url_input = self.query_one("#url-input", Input)
+        url_input.value = url
+
+        # Add to history so user can navigate back
+        if not self._navigating_history and add_to_history:
+            entry = HistoryEntry(
+                url=url,
+                content=parsed_lines,
+                scroll_position=0,
+                link_index=0,
+                status=0,  # Error status
+                meta="error",
+                mime_type="text/gemini",
+            )
+            self.history.push(entry)
+            self._update_navigation_buttons()
 
     def _normalize_url(self, url: str) -> str:
         """Normalize URL, auto-detecting scheme if not present.

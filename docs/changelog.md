@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Back navigation now works correctly after downloading binary files (download pages are properly added to history)
+- Back navigation now works correctly from error pages (timeout, connection errors are properly added to history)
 - Command-line URLs with explicit protocols (e.g., `astronomo gopher://...`) are no longer incorrectly prefixed with `gemini://`
 - Known Hosts settings tab now correctly handles hostnames with periods (e.g., `station.martinrue.com`) by sanitizing widget IDs
 - Binary files (images, audio, etc.) over Gemini are now properly downloaded to ~/Downloads instead of crashing when trying to parse them as Gemtext
