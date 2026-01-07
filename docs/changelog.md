@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Directory listings displayed natively (Nex uses Gemtext-compatible format)
   - Auto-detection for `nex.*` hostnames and `:1900` port
   - Inline TCP client implementation (no external library dependency)
+  - Binary file downloads with automatic detection (null bytes, non-UTF8 content)
 - Cross-protocol link navigation: Click links to navigate between Gemini, Gopher, Finger, and Nex resources
 - HTTP/HTTPS links now open in the system browser instead of showing an error
 - "Open File" button on download complete page: After downloading binary files, click to open with system default application (uses `xdg-open` on Linux, `open` on macOS, `start` on Windows)

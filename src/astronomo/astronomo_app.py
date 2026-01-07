@@ -1084,16 +1084,49 @@ class Astronomo(App[None]):
         from astronomo.formatters.nex import fetch_nex
 
         try:
-            parsed_lines = await fetch_nex(url, timeout=self.config_manager.timeout)
+            result = await fetch_nex(url, timeout=self.config_manager.timeout)
 
+            # Handle binary download
+            if result.is_binary and result.binary_data:
+                filename = result.filename or "download"
+                filepath = await self._handle_binary_download(
+                    filename, result.binary_data
+                )
+                # Show success message with Open link
+                success_text = (
+                    f"# Download Complete\n\n"
+                    f"File: {filepath.name}\n\n"
+                    f"Saved to ~/Downloads\n\n"
+                    f"=> file://{filepath} 📂 Open File"
+                )
+                parsed_lines = parse_gemtext(success_text)
+                self.current_url = url
+                self.query_one("#url-input", Input).value = url
+                viewer.update_content(parsed_lines)
+
+                if not self._navigating_history and add_to_history:
+                    entry = HistoryEntry(
+                        url=url,
+                        content=parsed_lines,
+                        scroll_position=0,
+                        link_index=0,
+                        status=20,
+                        meta="",
+                        mime_type="application/octet-stream",
+                    )
+                    self.history.push(entry)
+                    self._update_navigation_buttons()
+                return
+
+            # Normal text content
             self.current_url = url
             self.query_one("#url-input", Input).value = url
-            viewer.update_content(parsed_lines)
+            viewer.update_content(result.content)
 
             if not self._navigating_history and add_to_history:
                 entry = HistoryEntry(
                     url=url,
-                    content=parsed_lines,
+                    content=result.content,
                     scroll_position=0,
                     link_index=0,
                     status=20,

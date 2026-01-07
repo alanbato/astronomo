@@ -206,6 +206,7 @@ All protocols convert their responses to Gemtext format, allowing the same `Gemt
 - **Gemtext-compatible**: Directory listings use `=> url label` syntax
 - **Inline implementation**: No external library needed, direct asyncio TCP client
 - **Auto-detection**: `nex.*` hostnames and `:1900` port automatically detected
+- **Binary downloads**: Automatic detection of binary files via null bytes and non-UTF8 content, saves to `~/Downloads`
 
 ### Bookmarks (`~/.config/astronomo/bookmarks.toml`)
 ```toml
