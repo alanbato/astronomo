@@ -57,7 +57,7 @@ from astronomo.widgets import (
 )
 
 # Register URL schemes for proper urljoin behavior
-for scheme in ("gemini", "gopher", "finger", "nex"):
+for scheme in ("gemini", "gopher", "finger", "nex", "spartan"):
     if scheme not in uses_relative:
         uses_relative.append(scheme)
     if scheme not in uses_netloc:
@@ -228,7 +228,7 @@ class Astronomo(App[None]):
             "# Welcome to Astronomo!\n\n"
             "```\n" + starry_night + "\n```\n\n"
             "Enter a URL above to get started.\n\n"
-            "Supported protocols: Gemini, Gopher, Finger, Nex"
+            "Supported protocols: Gemini, Gopher, Finger, Nex, Spartan"
         )
         return parse_gemtext(welcome_text)
 
@@ -314,6 +314,9 @@ class Astronomo(App[None]):
             return
         elif scheme == "finger":
             await self._fetch_finger(url, viewer, add_to_history)
+            return
+        elif scheme == "spartan":
+            await self._fetch_spartan(url, viewer, add_to_history)
             return
         elif scheme == "nex":
             await self._fetch_nex(url, viewer, add_to_history)
@@ -553,7 +556,7 @@ class Astronomo(App[None]):
         parsed = urlparse(link_url)
 
         # Check if it's an absolute URL with a supported scheme
-        if parsed.scheme in ("gemini", "gopher", "finger", "nex"):
+        if parsed.scheme in ("gemini", "gopher", "finger", "nex", "spartan"):
             pass  # Use as-is
         elif parsed.scheme in ("http", "https"):
             self._open_external_link(link_url)
@@ -1148,6 +1151,112 @@ class Astronomo(App[None]):
             error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
             self._display_error_page(url, error_text, viewer, add_to_history)
 
+    async def _fetch_spartan(
+        self,
+        url: str,
+        viewer: GemtextViewer,
+        add_to_history: bool,
+        redirect_count: int = 0,
+    ) -> None:
+        """Fetch and display a Spartan resource.
+
+        Args:
+            url: The spartan:// URL to fetch
+            viewer: The GemtextViewer to update
+            add_to_history: Whether to add to history
+            redirect_count: Number of redirects followed so far (internal)
+        """
+        import asyncio
+
+        from astronomo.formatters.spartan import fetch_spartan
+
+        try:
+            result = await fetch_spartan(
+                url,
+                timeout=self.config_manager.timeout,
+            )
+
+            # Handle redirect - track redirect count to prevent loops
+            if result.is_redirect and result.redirect_url:
+                if redirect_count >= self.config_manager.max_redirects:
+                    error_text = (
+                        f"# Too Many Redirects\n\n"
+                        f"Exceeded maximum of {self.config_manager.max_redirects} redirects.\n\n"
+                        f"The server may be misconfigured or there may be a redirect loop."
+                    )
+                    self._display_error_page(url, error_text, viewer, add_to_history)
+                    return
+                await self._fetch_spartan(
+                    result.redirect_url,
+                    viewer,
+                    add_to_history,
+                    redirect_count + 1,
+                )
+                return
+
+            # Handle binary download
+            if result.is_binary and result.binary_data:
+                filename = result.filename or "download"
+                filepath = await self._handle_binary_download(
+                    filename, result.binary_data, result.mime_type
+                )
+                # Show success message with Open link
+                success_text = (
+                    f"# Download Complete\n\n"
+                    f"File: {filepath.name}\n"
+                    f"Type: {result.mime_type}\n\n"
+                    f"Saved to ~/Downloads\n\n"
+                    f"=> file://{filepath} 📂 Open File"
+                )
+                parsed_lines = parse_gemtext(success_text)
+                self.current_url = result.final_url
+                self.query_one("#url-input", Input).value = result.final_url
+                viewer.update_content(parsed_lines)
+
+                if not self._navigating_history and add_to_history:
+                    entry = HistoryEntry(
+                        url=result.final_url,
+                        content=parsed_lines,
+                        scroll_position=0,
+                        link_index=0,
+                        status=20,
+                        meta="",
+                        mime_type=result.mime_type,
+                    )
+                    self.history.push(entry)
+                    self._update_navigation_buttons()
+                return
+
+            # Normal text content
+            self.current_url = result.final_url
+            self.query_one("#url-input", Input).value = result.final_url
+            viewer.update_content(result.content)
+
+            if not self._navigating_history and add_to_history:
+                entry = HistoryEntry(
+                    url=result.final_url,
+                    content=result.content,
+                    scroll_position=0,
+                    link_index=0,
+                    status=20,
+                    meta="",
+                    mime_type=result.mime_type,
+                )
+                self.history.push(entry)
+                self._update_navigation_buttons()
+                self._update_tab_title()
+        except asyncio.TimeoutError:
+            timeout = self.config_manager.timeout
+            error_text = (
+                f"# Timeout Error\n\n"
+                f"The request to {url} timed out after {timeout} seconds.\n\n"
+                f"The server may be down or not responding."
+            )
+            self._display_error_page(url, error_text, viewer, add_to_history)
+        except Exception as e:
+            error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
+            self._display_error_page(url, error_text, viewer, add_to_history)
+
     async def _fetch_gopher(
         self,
         url: str,
@@ -1405,6 +1514,10 @@ class Astronomo(App[None]):
         # gopher.* or :70 port
         if url.startswith("gopher.") or ":70" in url:
             return f"gopher://{url}"
+
+        # spartan.* or :300 port
+        if url.startswith("spartan.") or ":300" in url:
+            return f"spartan://{url}"
 
         # nex.* or :1900 port
         if url.startswith("nex.") or ":1900" in url:
