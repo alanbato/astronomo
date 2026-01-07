@@ -1,6 +1,6 @@
 [project]
 name = "astronomo"
-version = "0.10.1"
+version = "0.11.0"
 description = "A modern Gemini browser for the terminal"
 license = "GPL-3.0-or-later"
 readme = "README.md"
