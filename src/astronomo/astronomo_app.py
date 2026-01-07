@@ -57,7 +57,7 @@ from astronomo.widgets import (
 )
 
 # Register URL schemes for proper urljoin behavior
-for scheme in ("gemini", "gopher", "finger"):
+for scheme in ("gemini", "gopher", "finger", "nex"):
     if scheme not in uses_relative:
         uses_relative.append(scheme)
     if scheme not in uses_netloc:
@@ -228,7 +228,7 @@ class Astronomo(App[None]):
             "# Welcome to Astronomo!\n\n"
             "```\n" + starry_night + "\n```\n\n"
             "Enter a URL above to get started.\n\n"
-            "Supported protocols: Gemini, Gopher, Finger"
+            "Supported protocols: Gemini, Gopher, Finger, Nex"
         )
         return parse_gemtext(welcome_text)
 
@@ -314,6 +314,9 @@ class Astronomo(App[None]):
             return
         elif scheme == "finger":
             await self._fetch_finger(url, viewer, add_to_history)
+            return
+        elif scheme == "nex":
+            await self._fetch_nex(url, viewer, add_to_history)
             return
         elif scheme != "gemini":
             error = f"# Unsupported Protocol\n\nScheme '{scheme}' is not supported."
@@ -550,7 +553,7 @@ class Astronomo(App[None]):
         parsed = urlparse(link_url)
 
         # Check if it's an absolute URL with a supported scheme
-        if parsed.scheme in ("gemini", "gopher", "finger"):
+        if parsed.scheme in ("gemini", "gopher", "finger", "nex"):
             pass  # Use as-is
         elif parsed.scheme in ("http", "https"):
             self._open_external_link(link_url)
@@ -1066,6 +1069,52 @@ class Astronomo(App[None]):
             error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
             self._display_error_page(url, error_text, viewer, add_to_history)
 
+    async def _fetch_nex(
+        self, url: str, viewer: GemtextViewer, add_to_history: bool
+    ) -> None:
+        """Fetch and display a Nex resource.
+
+        Args:
+            url: The nex:// URL to fetch
+            viewer: The GemtextViewer to update
+            add_to_history: Whether to add to history
+        """
+        import asyncio
+
+        from astronomo.formatters.nex import fetch_nex
+
+        try:
+            parsed_lines = await fetch_nex(url, timeout=self.config_manager.timeout)
+
+            self.current_url = url
+            self.query_one("#url-input", Input).value = url
+            viewer.update_content(parsed_lines)
+
+            if not self._navigating_history and add_to_history:
+                entry = HistoryEntry(
+                    url=url,
+                    content=parsed_lines,
+                    scroll_position=0,
+                    link_index=0,
+                    status=20,
+                    meta="",
+                    mime_type="text/plain",
+                )
+                self.history.push(entry)
+                self._update_navigation_buttons()
+                self._update_tab_title()
+        except asyncio.TimeoutError:
+            timeout = self.config_manager.timeout
+            error_text = (
+                f"# Timeout Error\n\n"
+                f"The request to {url} timed out after {timeout} seconds.\n\n"
+                f"The server may be down or not responding."
+            )
+            self._display_error_page(url, error_text, viewer, add_to_history)
+        except Exception as e:
+            error_text = f"# Error\n\nFailed to fetch {url}:\n\n{e!r}"
+            self._display_error_page(url, error_text, viewer, add_to_history)
+
     async def _fetch_gopher(
         self,
         url: str,
@@ -1303,8 +1352,9 @@ class Astronomo(App[None]):
         Detection rules:
         1. Already has scheme -> return as-is
         2. Contains @ but no / before it -> finger:// (user@host pattern)
-        3. Hostname starts with "gopher." -> gopher://
-        4. Default -> gemini://
+        3. Hostname starts with "gopher." or :70 port -> gopher://
+        4. Hostname starts with "nex." or :1900 port -> nex://
+        5. Default -> gemini://
 
         Args:
             url: The URL to normalize
@@ -1322,6 +1372,10 @@ class Astronomo(App[None]):
         # gopher.* or :70 port
         if url.startswith("gopher.") or ":70" in url:
             return f"gopher://{url}"
+
+        # nex.* or :1900 port
+        if url.startswith("nex.") or ":1900" in url:
+            return f"nex://{url}"
 
         # Default to Gemini
         return f"gemini://{url}"

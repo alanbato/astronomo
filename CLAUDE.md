@@ -165,16 +165,17 @@ max_redirects = 5
 
 ## Multi-Protocol Architecture
 
-Astronomo supports three protocols: Gemini, Gopher, and Finger.
+Astronomo supports four protocols: Gemini, Gopher, Finger, and Nex.
 
 ### URL Routing
 
 The `_normalize_url` method in `astronomo_app.py` handles smart URL detection:
 
-1. URLs with explicit scheme (e.g., `gemini://`, `gopher://`, `finger://`) are used as-is
+1. URLs with explicit scheme (e.g., `gemini://`, `gopher://`, `finger://`, `nex://`) are used as-is
 2. `user@host` patterns are detected as Finger URLs
 3. Hostnames starting with `gopher.` or port `:70` are detected as Gopher
-4. All other URLs default to Gemini
+4. Hostnames starting with `nex.` or port `:1900` are detected as Nex
+5. All other URLs default to Gemini
 
 ### Protocol Dispatch
 
@@ -182,6 +183,7 @@ The `get_url` method routes requests to protocol-specific handlers:
 - `_fetch_gemini()` - Gemini protocol via Nauyaca
 - `_fetch_gopher()` - Gopher protocol via Mototli
 - `_fetch_finger()` - Finger protocol via Mapilli
+- `_fetch_nex()` - Nex protocol (inline TCP client)
 
 ### Unified Display
 
@@ -190,12 +192,20 @@ All protocols convert their responses to Gemtext format, allowing the same `Gemt
 - **Gopher**: Menus become Gemtext links with type indicators (`[DIR]`, `[TXT]`, `[SEARCH]`)
 - **Finger**: Responses wrapped in preformatted blocks with a heading
 - **Gemini**: Native Gemtext parsing
+- **Nex**: Directory listings are already Gemtext-compatible, parsed directly
 
 ### Gopher-Specific Features
 
 - **Search support**: Type 7 items trigger `InputModal` for query input
 - **Binary downloads**: Types 9, g, I save files to `~/Downloads`
 - **External links**: HTTP links (type h) open in system browser
+
+### Nex Protocol Details
+
+- **Simple TCP protocol**: Port 1900, plain text (no TLS)
+- **Gemtext-compatible**: Directory listings use `=> url label` syntax
+- **Inline implementation**: No external library needed, direct asyncio TCP client
+- **Auto-detection**: `nex.*` hostnames and `:1900` port automatically detected
 
 ### Bookmarks (`~/.config/astronomo/bookmarks.toml`)
 ```toml
@@ -227,7 +237,7 @@ created_at = "2025-01-15T10:30:00"
 - ✅ Theme support (10 built-in themes)
 - ✅ Import identities from Lagrange browser
 - ✅ Page snapshots (save pages as .gmi files with Ctrl+S)
-- ✅ Multi-protocol support (Gemini, Gopher, Finger)
+- ✅ Multi-protocol support (Gemini, Gopher, Finger, Nex)
 - ✅ Smart URL detection for protocol auto-selection
 - ✅ Gopher search and binary downloads
 - ✅ TOFU management UI (certificate change warnings, Known Hosts settings tab)
@@ -429,10 +439,10 @@ Client certificates for Gemini authentication are managed by `IdentityManager` (
 - Session choices use host-level prefixes (`gemini://host/`)
 
 ### URL Handling
-- Smart URL detection: `user@host` → Finger, `gopher.*` → Gopher, default → Gemini
+- Smart URL detection: `user@host` → Finger, `gopher.*` or `:70` → Gopher, `nex.*` or `:1900` → Nex, default → Gemini
 - Use `urljoin` for resolving relative URLs (works for all protocols)
 - URL-encode query strings with `urllib.parse.quote()`
-- Cross-protocol links work seamlessly (Gemini can link to Gopher, etc.)
+- Cross-protocol links work seamlessly (Gemini can link to Gopher, Nex, etc.)
 
 ## Pre-commit Hooks
 
