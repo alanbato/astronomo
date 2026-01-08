@@ -210,6 +210,42 @@ class TestLinkActivation:
             # Check that the viewer has links
             assert len(viewer._link_widgets) > 0
 
+    @pytest.mark.asyncio
+    async def test_uses_response_url_for_relative_links(self, mock_gemini_client):
+        """Test that response.url (after redirects) is used for relative links.
+
+        When a server redirects from /~user to /~user/, the response.url
+        should include the trailing slash, and relative links should be
+        resolved against that URL.
+        """
+        # Simulate a redirect: request /~user, server returns content at /~user/
+        mock_gemini_client.get = AsyncMock(
+            return_value=MagicMock(
+                status=20,
+                body="# Page\n=> ./about.gmi About\n",
+                meta="text/gemini",
+                mime_type="text/gemini",
+                is_success=MagicMock(return_value=True),
+                is_redirect=MagicMock(return_value=False),
+                url="gemini://example.com/~user/",  # Final URL after redirect
+            )
+        )
+
+        # User navigates to URL without trailing slash
+        app = Astronomo(initial_url="gemini://example.com/~user")
+
+        async with app.run_test(size=(80, 24)) as pilot:
+            await pilot.pause()
+
+            # The current_url should be the final URL (with trailing slash)
+            assert app.current_url == "gemini://example.com/~user/"
+
+            # Verify relative links would resolve correctly
+            from urllib.parse import urljoin
+
+            resolved = urljoin(app.current_url, "./about.gmi")
+            assert resolved == "gemini://example.com/~user/about.gmi"
+
 
 class TestGetPageTitle:
     """Tests for page title extraction."""
@@ -238,6 +274,7 @@ class TestGetPageTitle:
                 mime_type="text/gemini",
                 is_success=MagicMock(return_value=True),
                 is_redirect=MagicMock(return_value=False),
+                url=None,  # Final URL after redirects
             )
         )
 
@@ -488,6 +525,7 @@ class TestSaveSnapshot:
                 mime_type="text/gemini",
                 is_success=MagicMock(return_value=True),
                 is_redirect=MagicMock(return_value=False),
+                url=None,
             )
         )
 
@@ -521,6 +559,7 @@ class TestSaveSnapshot:
                 mime_type="text/gemini",
                 is_success=MagicMock(return_value=True),
                 is_redirect=MagicMock(return_value=False),
+                url=None,
             )
         )
 
@@ -573,6 +612,7 @@ directory = "{custom_snapshot_dir}"
                     mime_type="text/gemini",
                     is_success=MagicMock(return_value=True),
                     is_redirect=MagicMock(return_value=False),
+                    url=None,
                 )
             )
 
@@ -607,6 +647,7 @@ directory = "{custom_snapshot_dir}"
                 mime_type="text/gemini",
                 is_success=MagicMock(return_value=True),
                 is_redirect=MagicMock(return_value=False),
+                url=None,
             )
         )
 
@@ -665,6 +706,7 @@ directory = "{snapshot_dir}"
                     mime_type="text/gemini",
                     is_success=MagicMock(return_value=True),
                     is_redirect=MagicMock(return_value=False),
+                    url=None,
                 )
             )
 
@@ -723,6 +765,7 @@ directory = "{snapshot_dir}"
                     mime_type="text/gemini",
                     is_success=MagicMock(return_value=True),
                     is_redirect=MagicMock(return_value=False),
+                    url=None,
                 )
             )
 
@@ -795,6 +838,7 @@ directory = "{snapshot_dir}"
                     mime_type="text/gemini",
                     is_success=MagicMock(return_value=True),
                     is_redirect=MagicMock(return_value=False),
+                    url=None,
                 )
             )
 
@@ -831,6 +875,7 @@ directory = "{snapshot_dir}"
                 mime_type="text/gemini",
                 is_success=MagicMock(return_value=True),
                 is_redirect=MagicMock(return_value=False),
+                url=None,
             )
         )
 
@@ -883,6 +928,7 @@ directory = "{snapshot_dir}"
                     mime_type="text/gemini",
                     is_success=MagicMock(return_value=True),
                     is_redirect=MagicMock(return_value=False),
+                    url=None,
                 )
             )
 
@@ -939,6 +985,7 @@ directory = "{snapshot_dir}"
                     mime_type="text/gemini",
                     is_success=MagicMock(return_value=True),
                     is_redirect=MagicMock(return_value=False),
+                    url=None,
                 )
             )
 

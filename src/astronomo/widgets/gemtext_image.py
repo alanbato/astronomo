@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 # Try to import Chafa - it's an optional dependency
 try:
     from chafa import Canvas, CanvasConfig, PixelMode, ColorSpace, DitherMode
+    from chafa.loader import Loader
 
     CHAFA_AVAILABLE = True
 except ImportError:
@@ -177,8 +178,18 @@ class GemtextImageWidget(Static):
                 tmp_path = tmp.name
 
             try:
-                # Create canvas from file
-                canvas = Canvas.from_file(tmp_path, config)
+                # Load image pixels using Loader
+                loader = Loader(tmp_path)
+
+                # Create canvas and draw pixels
+                canvas = Canvas(config)
+                canvas.draw_all_pixels(
+                    loader.pixel_type,
+                    loader.get_pixels(),
+                    loader.width,
+                    loader.height,
+                    loader.rowstride,
+                )
 
                 # Get ANSI output
                 ansi_output = canvas.print().decode("utf-8")
@@ -221,7 +232,7 @@ class GemtextImageWidget(Static):
         elif quality == "high":
             base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_DIFFUSION
         else:  # medium
-            base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_BAYER
+            base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_ORDERED
 
         return base_settings
 
