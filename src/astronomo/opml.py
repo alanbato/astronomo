@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from pathlib import Path
 
-from astronomo.feeds import Feed, FeedFolder, FeedManager
+from astronomo.feeds import FeedManager
 
 
 def export_opml(manager: FeedManager, output_path: Path) -> None:
@@ -33,7 +33,7 @@ def export_opml(manager: FeedManager, output_path: Path) -> None:
 
     # Export root-level feeds
     for feed in manager.get_root_feeds():
-        outline = ET.SubElement(
+        ET.SubElement(
             body,
             "outline",
             type="rss",
@@ -94,7 +94,6 @@ def import_opml(manager: FeedManager, input_path: Path) -> tuple[int, int]:
 
     # Process outlines (feeds and folders)
     for outline in body.findall("outline"):
-        outline_type = outline.get("type", "")
         xml_url = outline.get("xmlUrl")
         text = outline.get("text", "")
         title = outline.get("title", text)

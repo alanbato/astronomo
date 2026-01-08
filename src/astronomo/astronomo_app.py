@@ -31,8 +31,10 @@ from astronomo.config import ConfigManager
 from astronomo.feeds import FeedManager
 from astronomo.history import HistoryEntry, HistoryManager
 from astronomo.identities import Identity, IdentityManager
+from astronomo.media_detector import MediaDetector
 from astronomo.parser import GemtextLine, LineType, parse_gemtext
 from astronomo.response_handler import format_response
+from astronomo.widgets.gemtext_image import CHAFA_AVAILABLE
 from astronomo.screens import FeedsScreen, SettingsScreen
 from astronomo.tabs import Tab, TabManager
 from astronomo.widgets import (
@@ -455,13 +457,12 @@ class Astronomo(App[None]):
                 self.get_url(redirect_url, add_to_history=add_to_history)
                 return
 
-            # Handle binary content (non-text MIME types)
+            # Handle binary content (non-text MIME types) or images detected by extension
             mime_type = response.mime_type or "text/gemini"
-            if not mime_type.startswith("text/"):
-                # Check if this is an image and images are enabled
-                from astronomo.media_detector import MediaDetector
-                from astronomo.widgets.gemtext_image import CHAFA_AVAILABLE
 
+            # Check for binary content OR image URL (servers may return text/gemini for images)
+            is_image_url = MediaDetector.is_image(mime_type, url)
+            if not mime_type.startswith("text/") or is_image_url:
                 parsed_url = urlparse(url)
                 filename = parsed_url.path.split("/")[-1] or "download"
 
@@ -473,7 +474,7 @@ class Astronomo(App[None]):
                 # Try to display image inline if enabled
                 if (
                     body
-                    and MediaDetector.is_image(mime_type, url)
+                    and is_image_url
                     and self.config_manager.show_images
                     and CHAFA_AVAILABLE
                 ):
@@ -642,8 +643,7 @@ class Astronomo(App[None]):
             filename: Suggested filename
             data: Image data
         """
-        filepath = await self._handle_binary_download(filename, data, None)
-        self.notify(f"Image saved to {filepath}", severity="information")
+        await self._handle_binary_download(filename, data, None)
 
     def on_gemtext_viewer_navigate_back(
         self, message: GemtextViewer.NavigateBack
@@ -1565,7 +1565,7 @@ class Astronomo(App[None]):
 
             # Clear viewer and add image
             viewer.lines = [heading, text_line]
-            viewer.query("GemtextLineWidget, Center").remove()
+            viewer.query("GemtextLineWidget, Center, GemtextImageWidget").remove()
 
             # Mount the image widget directly
             viewer.mount(image_widget)
@@ -1756,7 +1756,9 @@ class Astronomo(App[None]):
                     from astronomo.widgets.gemtext_image import GemtextImageWidget
 
                     viewer.lines = entry.content
-                    viewer.query("GemtextLineWidget, Center").remove()
+                    viewer.query(
+                        "GemtextLineWidget, Center, GemtextImageWidget"
+                    ).remove()
                     image_widget = GemtextImageWidget(
                         url=entry.url,
                         filename=filename,

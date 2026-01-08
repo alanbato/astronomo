@@ -13,7 +13,14 @@ if TYPE_CHECKING:
 
 # Try to import Chafa - it's an optional dependency
 try:
-    from chafa import Canvas, CanvasConfig, PixelMode, ColorSpace, DitherMode
+    from chafa import (
+        Canvas,
+        CanvasConfig,
+        CanvasMode,
+        ColorSpace,
+        DitherMode,
+        PixelMode,
+    )
     from chafa.loader import Loader
 
     CHAFA_AVAILABLE = True
@@ -157,19 +164,6 @@ class GemtextImageWidget(Static):
             # Map quality to Chafa settings
             quality_settings = self._get_quality_settings(quality)
 
-            # Configure Chafa canvas
-            config = CanvasConfig()
-            config.width = max_width
-            config.height = max_width  # Let Chafa determine height from aspect ratio
-
-            # Apply quality settings
-            if "pixel_mode" in quality_settings:
-                config.pixel_mode = quality_settings["pixel_mode"]
-            if "color_space" in quality_settings:
-                config.color_space = quality_settings["color_space"]
-            if "dither_mode" in quality_settings:
-                config.dither_mode = quality_settings["dither_mode"]
-
             # Chafa needs a file path, so write to temp file
             with tempfile.NamedTemporaryFile(
                 suffix=f".{self.mime_type.split('/')[-1]}", delete=False
@@ -180,6 +174,32 @@ class GemtextImageWidget(Static):
             try:
                 # Load image pixels using Loader
                 loader = Loader(tmp_path)
+
+                # Configure Chafa canvas
+                config = CanvasConfig()
+                config.width = max_width
+
+                # Calculate proper height preserving aspect ratio
+                # Terminal chars are ~2x taller than wide, so font_ratio ~0.5
+                config.calc_canvas_geometry(
+                    src_width=loader.width,
+                    src_height=loader.height,
+                    font_ratio=0.5,
+                    zoom=False,
+                    stretch=False,
+                )
+
+                # Apply quality settings
+                if "pixel_mode" in quality_settings:
+                    config.pixel_mode = quality_settings["pixel_mode"]
+                if "canvas_mode" in quality_settings:
+                    config.canvas_mode = quality_settings["canvas_mode"]
+                if "color_space" in quality_settings:
+                    config.color_space = quality_settings["color_space"]
+                if "dither_mode" in quality_settings:
+                    config.dither_mode = quality_settings["dither_mode"]
+                if "work_factor" in quality_settings:
+                    config.work_factor = quality_settings["work_factor"]
 
                 # Create canvas and draw pixels
                 canvas = Canvas(config)
@@ -220,19 +240,28 @@ class GemtextImageWidget(Static):
         Returns:
             Dictionary of Chafa configuration settings
         """
-        # For simplicity, use symbol mode for all qualities now
-        # This can be expanded later to use sixel/kitty for higher qualities
         base_settings = {
             "pixel_mode": PixelMode.CHAFA_PIXEL_MODE_SYMBOLS,
-            "color_space": ColorSpace.CHAFA_COLOR_SPACE_RGB,
         }
 
         if quality == "low":
+            # 256 colors, no dithering, RGB colorspace, minimal optimization
+            base_settings["canvas_mode"] = CanvasMode.CHAFA_CANVAS_MODE_INDEXED_256
+            base_settings["color_space"] = ColorSpace.CHAFA_COLOR_SPACE_RGB
             base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_NONE
+            base_settings["work_factor"] = 0.25
         elif quality == "high":
-            base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_DIFFUSION
-        else:  # medium
+            # Truecolor, diffusion dithering, DIN99D colorspace, maximum optimization
+            base_settings["canvas_mode"] = CanvasMode.CHAFA_CANVAS_MODE_TRUECOLOR
+            base_settings["color_space"] = ColorSpace.CHAFA_COLOR_SPACE_DIN99D
             base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_ORDERED
+            base_settings["work_factor"] = 1.0
+        else:  # medium
+            # 256 colors, ordered dithering, DIN99D colorspace, balanced optimization
+            base_settings["canvas_mode"] = CanvasMode.CHAFA_CANVAS_MODE_TRUECOLOR
+            base_settings["color_space"] = ColorSpace.CHAFA_COLOR_SPACE_DIN99D
+            base_settings["dither_mode"] = DitherMode.CHAFA_DITHER_MODE_DIFFUSION
+            base_settings["work_factor"] = 0.5
 
         return base_settings
 
