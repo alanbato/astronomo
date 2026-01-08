@@ -76,6 +76,7 @@ def mock_gemini_response():
         meta="text/gemini",
         redirect_url=None,
         mime_type=None,
+        url=None,
     ):
         response = MagicMock()
         response.status = status
@@ -85,6 +86,7 @@ def mock_gemini_response():
         response.is_success.return_value = 20 <= status < 30
         response.is_redirect.return_value = 30 <= status < 40
         response.redirect_url = redirect_url
+        response.url = url  # Final URL after redirects
         return response
 
     return _create
@@ -359,6 +361,7 @@ def mock_feed_content():
             rss = mock_feed_content("rss")
             atom = mock_feed_content("atom")
     """
+
     def _create(feed_type="rss"):
         if feed_type == "rss":
             return MOCK_RSS_FEED
@@ -366,4 +369,5 @@ def mock_feed_content():
             return MOCK_ATOM_FEED
         else:
             raise ValueError(f"Unknown feed type: {feed_type}")
+
     return _create

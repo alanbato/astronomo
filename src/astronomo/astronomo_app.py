@@ -526,14 +526,16 @@ class Astronomo(App[None]):
                 return
 
             # Store current URL for relative link resolution
-            self.current_url = url
+            # Use response.url (final URL after redirects) for correct resolution
+            final_url = response.url or url
+            self.current_url = final_url
 
             # Update URL bar
             url_input = self.query_one("#url-input", Input)
-            url_input.value = url
+            url_input.value = final_url
 
             # Format and display the response (now returns list[GemtextLine])
-            parsed_lines = format_response(url, response)
+            parsed_lines = format_response(final_url, response)
             viewer.update_content(parsed_lines)
 
             # Save successful response to history (only status 20-29)
@@ -543,7 +545,7 @@ class Astronomo(App[None]):
                 and response.is_success()
             ):
                 entry = HistoryEntry(
-                    url=url,
+                    url=final_url,
                     content=parsed_lines,
                     scroll_position=0,
                     link_index=0,

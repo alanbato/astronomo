@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extensible media detection system ready for future audio/video support
 
 ### Fixed
+- Relative links now resolve correctly after server redirects (e.g., navigating to `/~user` which redirects to `/~user/` no longer breaks relative links like `./about.gmi`)
 - Back navigation now works correctly after downloading binary files (download pages are properly added to history)
 - Back navigation now works correctly from error pages (timeout, connection errors are properly added to history)
 - Command-line URLs with explicit protocols (e.g., `astronomo gopher://...`) are no longer incorrectly prefixed with `gemini://`

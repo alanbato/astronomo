@@ -126,9 +126,10 @@ async def fetch_spartan(
             if isinstance(body, bytes):
                 charset = response.charset or "utf-8"
                 try:
-                    body = body.decode(charset)
+                    decoded_body = body.decode(charset)
                 except (UnicodeDecodeError, LookupError):
-                    body = body.decode("utf-8", errors="replace")
+                    decoded_body = body.decode("utf-8", errors="replace")
+                body = decoded_body
 
             # Empty body check
             if not body or not body.strip():
