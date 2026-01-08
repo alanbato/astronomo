@@ -37,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-detection for `spartan.*` hostnames and `:300` port
   - Automatic redirect following (respects `max_redirects` config)
   - MIME-based binary file detection and downloads to ~/Downloads
+  - Input links support (`=:` syntax): Interactive forms that prompt for user input before sending data to the server
+    - 10KB data limit enforced (Spartan protocol specification)
+    - Displays both link label and target URL in input modal
+    - Multi-line input support with automatic expansion
+    - Real-time byte counter with visual warnings
+    - Data sent via Spartan upload mechanism (not appended to URL like Gemini)
 - Cross-protocol link navigation: Click links to navigate between Gemini, Gopher, Finger, Nex, and Spartan resources
 - HTTP/HTTPS links now open in the system browser instead of showing an error
 - "Open File" button on download complete page: After downloading binary files, click to open with system default application (uses `xdg-open` on Linux, `open` on macOS, `start` on Windows)

@@ -63,6 +63,7 @@ class SpartanFetchResult:
 async def fetch_spartan(
     url: str,
     timeout: int = 30,
+    data: str | None = None,
 ) -> SpartanFetchResult:
     """Fetch and format a Spartan resource.
 
@@ -75,6 +76,7 @@ async def fetch_spartan(
     Args:
         url: The spartan:// URL to fetch
         timeout: Request timeout in seconds
+        data: Optional data to upload (for input links =:)
 
     Returns:
         SpartanFetchResult with content and metadata
@@ -85,7 +87,13 @@ async def fetch_spartan(
     """
     try:
         # Use teyaotlani library to fetch Spartan resource
-        response = await get(url, timeout=float(timeout))
+        # Use upload() for input links with data, get() for read-only
+        if data is not None:
+            from teyaotlani import upload
+
+            response = await upload(url, data, timeout=float(timeout))
+        else:
+            response = await get(url, timeout=float(timeout))
 
         # Status 2: Success
         if response.status == 2:
