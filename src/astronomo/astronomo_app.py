@@ -135,6 +135,11 @@ class Astronomo(App[None]):
         self.identities = IdentityManager()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url
+
+        # Image cache for inline image display
+        from astronomo.image_cache import ImageCache
+
+        self.image_cache = ImageCache()
         # Global session identity choices (shared across tabs, persisted to disk)
         self._global_session_identity_choices: dict[str, Identity | None] = {}
         self._session_choices_path = (
@@ -453,13 +458,34 @@ class Astronomo(App[None]):
             # Handle binary content (non-text MIME types)
             mime_type = response.mime_type or "text/gemini"
             if not mime_type.startswith("text/"):
-                # Binary file - download to ~/Downloads
+                # Check if this is an image and images are enabled
+                from astronomo.media_detector import MediaDetector
+                from astronomo.widgets.gemtext_image import CHAFA_AVAILABLE
+
                 parsed_url = urlparse(url)
                 filename = parsed_url.path.split("/")[-1] or "download"
+
                 # Ensure body is bytes
                 body = response.body
                 if isinstance(body, str):
                     body = body.encode("utf-8")
+
+                # Try to display image inline if enabled
+                if (
+                    body
+                    and MediaDetector.is_image(mime_type, url)
+                    and self.config_manager.show_images
+                    and CHAFA_AVAILABLE
+                ):
+                    # Display image inline
+                    result = await self._handle_image_display(
+                        url, filename, body, mime_type, viewer, add_to_history
+                    )
+                    if result:
+                        return  # Successfully displayed image
+                    # If image display failed, fall through to download
+
+                # Binary file - download to ~/Downloads
                 if body:
                     filepath = await self._handle_binary_download(
                         filename, body, mime_type
@@ -597,6 +623,25 @@ class Astronomo(App[None]):
             url_input = self.query_one("#url-input", Input)
             url_input.value = link_url
             self.get_url(link_url)
+
+    def on_gemtext_image_widget_download_requested(self, message) -> None:
+        """Handle image download button from image widget."""
+        # Use image data from the widget (already in memory)
+        self.call_later(
+            self._download_cached_image,
+            message.filename,
+            message.image_data,
+        )
+
+    async def _download_cached_image(self, filename: str, data: bytes) -> None:
+        """Download a cached image to ~/Downloads.
+
+        Args:
+            filename: Suggested filename
+            data: Image data
+        """
+        filepath = await self._handle_binary_download(filename, data, None)
+        self.notify(f"Image saved to {filepath}", severity="information")
 
     def on_gemtext_viewer_navigate_back(
         self, message: GemtextViewer.NavigateBack
@@ -1467,6 +1512,85 @@ class Astronomo(App[None]):
         self.notify(f"Downloaded: {filepath}", severity="information")
         return filepath
 
+    async def _handle_image_display(
+        self,
+        url: str,
+        filename: str,
+        image_data: bytes,
+        mime_type: str,
+        viewer: "GemtextViewer",
+        add_to_history: bool,
+    ) -> bool:
+        """Display image inline with Chafa rendering.
+
+        Args:
+            url: Original image URL
+            filename: Image filename
+            image_data: Raw image bytes
+            mime_type: MIME type of the image
+            viewer: GemtextViewer widget to display in
+            add_to_history: Whether to add to history
+
+        Returns:
+            True if image was successfully displayed, False otherwise
+        """
+        try:
+            from astronomo.widgets.gemtext_image import GemtextImageWidget
+
+            # Cache the image for future access
+            self.image_cache.put(url, image_data)
+
+            # Create image widget
+            image_widget = GemtextImageWidget(
+                url=url,
+                filename=filename,
+                image_data=image_data,
+                mime_type=mime_type,
+            )
+
+            # Create a heading and mount the widget
+            # We'll convert this to Gemtext format for consistency
+            from astronomo.parser import GemtextHeading, GemtextLine, LineType
+
+            heading = GemtextHeading(
+                raw=f"# {filename}", level=1, content=f" {filename}"
+            )
+            text_line = GemtextLine(
+                line_type=LineType.TEXT,
+                content="",
+                raw="",
+            )
+
+            # Clear viewer and add image
+            viewer.lines = [heading, text_line]
+            viewer.query("GemtextLineWidget, Center").remove()
+
+            # Mount the image widget directly
+            viewer.mount(image_widget)
+
+            # Update state and history
+            self.current_url = url
+            url_input = self.query_one("#url-input", Input)
+            url_input.value = url
+
+            if not self._navigating_history and add_to_history:
+                # Store minimal info in history (image reloaded from cache)
+                entry = HistoryEntry(
+                    url=url,
+                    content=[heading, text_line],
+                    scroll_position=0,
+                    link_index=0,
+                    mime_type=mime_type,
+                )
+                self.history.push(entry)
+                self._update_navigation_buttons()
+
+            return True
+
+        except Exception as e:
+            self.notify(f"Failed to display image: {e}", severity="warning")
+            return False
+
     def _open_external_link(self, url: str) -> None:
         """Open HTTP/HTTPS links in system browser.
 
@@ -1612,7 +1736,38 @@ class Astronomo(App[None]):
 
             # Update content viewer
             viewer = self.query_one("#content", GemtextViewer)
-            viewer.update_content(entry.content)
+
+            # Check if this was an image - if so, recreate widget from cache
+            from astronomo.media_detector import MediaDetector
+
+            if MediaDetector.is_image(entry.mime_type, entry.url):
+                # Try to restore image from cache
+                cached_image_data = self.image_cache.get(entry.url)
+                if cached_image_data:
+                    # Extract filename from URL
+                    from urllib.parse import urlparse
+
+                    parsed_url = urlparse(entry.url)
+                    filename = parsed_url.path.split("/")[-1] or "image"
+
+                    # Recreate the image widget
+                    from astronomo.widgets.gemtext_image import GemtextImageWidget
+
+                    viewer.lines = entry.content
+                    viewer.query("GemtextLineWidget, Center").remove()
+                    image_widget = GemtextImageWidget(
+                        url=entry.url,
+                        filename=filename,
+                        image_data=cached_image_data,
+                        mime_type=entry.mime_type,
+                    )
+                    viewer.mount(image_widget)
+                else:
+                    # Image not in cache, just show the text content
+                    viewer.update_content(entry.content)
+            else:
+                # Regular content - restore normally
+                viewer.update_content(entry.content)
 
             # Restore scroll position and link selection
             viewer.scroll_y = entry.scroll_position

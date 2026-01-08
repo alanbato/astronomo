@@ -67,6 +67,12 @@ show_emoji = true
 # Preformatted blocks and code are always shown at full width
 max_content_width = 80
 
+# Show images inline (requires chafapy optional dependency)
+show_images = false
+
+# Image rendering quality (low, medium, or high)
+image_quality = "medium"
+
 [browsing]
 # Default home page when launching without a URL argument
 # Uncomment and set to your preferred start page:
@@ -102,12 +108,16 @@ class AppearanceConfig:
         syntax_highlighting: Enable syntax highlighting in preformatted blocks
         show_emoji: Display emoji characters (False shows text descriptions)
         max_content_width: Maximum width for text content (0 to disable, minimum 40)
+        show_images: Display images inline (requires chafapy optional dependency)
+        image_quality: Image rendering quality ("low", "medium", or "high")
     """
 
     theme: str = "textual-dark"
     syntax_highlighting: bool = True
     show_emoji: bool = True
     max_content_width: int = 80
+    show_images: bool = False
+    image_quality: str = "medium"
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
@@ -116,6 +126,8 @@ class AppearanceConfig:
             "syntax_highlighting": self.syntax_highlighting,
             "show_emoji": self.show_emoji,
             "max_content_width": self.max_content_width,
+            "show_images": self.show_images,
+            "image_quality": self.image_quality,
         }
 
     @classmethod
@@ -145,11 +157,25 @@ class AppearanceConfig:
         ):
             max_content_width = defaults.max_content_width
 
+        show_images = data.get("show_images", defaults.show_images)
+        if not isinstance(show_images, bool):
+            show_images = defaults.show_images
+
+        image_quality = data.get("image_quality", defaults.image_quality)
+        if not isinstance(image_quality, str) or image_quality not in (
+            "low",
+            "medium",
+            "high",
+        ):
+            image_quality = defaults.image_quality
+
         return cls(
             theme=theme,
             syntax_highlighting=syntax_highlighting,
             show_emoji=show_emoji,
             max_content_width=max_content_width,
+            show_images=show_images,
+            image_quality=image_quality,
         )
 
 
@@ -396,3 +422,13 @@ class ConfigManager:
     def max_content_width(self) -> int:
         """Get the configured max content width (0 means disabled)."""
         return self.config.appearance.max_content_width
+
+    @property
+    def show_images(self) -> bool:
+        """Get whether images should be displayed inline."""
+        return self.config.appearance.show_images
+
+    @property
+    def image_quality(self) -> str:
+        """Get the configured image quality setting."""
+        return self.config.appearance.image_quality

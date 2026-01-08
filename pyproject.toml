@@ -48,6 +48,9 @@ docs = [
     "mkdocstrings[python]>=1.0.0",
     "pymdown-extensions>=10.17.2",
 ]
+chafa = [
+    "chafa.py>=1.2.0",
+]
 
 [tool.ty.environment]
 python-version = "3.11"
