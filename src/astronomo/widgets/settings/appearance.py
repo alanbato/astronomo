@@ -46,6 +46,21 @@ APPEARANCE_SETTINGS = [
         default=80,
         placeholder="80",
     ),
+    SettingDefinition(
+        key="appearance.show_images",
+        label="Show Images",
+        widget_type=WidgetType.SWITCH,
+        description="Display images inline (requires chafa.py)",
+        default=False,
+    ),
+    SettingDefinition(
+        key="appearance.image_quality",
+        label="Image Quality",
+        widget_type=WidgetType.SELECT,
+        description="Quality level for rendered images",
+        options=[("low", "Low"), ("medium", "Medium"), ("high", "High")],
+        default="medium",
+    ),
 ]
 
 
@@ -116,3 +131,9 @@ class AppearanceSettings(Static):
                     viewer.apply_width_constraint()
                 except Exception:
                     pass  # Viewer not available (e.g., in tests)
+            elif parts[1] == "show_images":
+                self.config_manager.config.appearance.show_images = value
+                self.config_manager.save()
+            elif parts[1] == "image_quality":
+                self.config_manager.config.appearance.image_quality = value
+                self.config_manager.save()

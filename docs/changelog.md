@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-protocol link navigation: Click links to navigate between Gemini, Gopher, Finger, Nex, and Spartan resources
 - HTTP/HTTPS links now open in the system browser instead of showing an error
 - "Open File" button on download complete page: After downloading binary files, click to open with system default application (uses `xdg-open` on Linux, `open` on macOS, `start` on Windows)
+- Inline image display with Chafa: Automatically render images (PNG, JPEG, GIF, WebP) as ANSI art in the terminal
+  - Requires `chafa.py` optional dependency (install with `uv sync --group chafa`)
+  - Toggle display in Settings → Appearance → Show Images (off by default)
+  - Quality settings: Low, Medium (default), High - controls dithering and rendering detail
+  - LRU cache: Stores up to 10 images (100MB max) in `~/.cache/astronomo/images/` for fast history navigation
+  - Download button on each image to save original file to ~/Downloads
+  - Respects `max_content_width` setting for image sizing
+  - Graceful fallback: If Chafa unavailable or rendering fails, falls back to binary download
+  - Extensible media detection system ready for future audio/video support
 
 ### Fixed
 - Back navigation now works correctly after downloading binary files (download pages are properly added to history)
