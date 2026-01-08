@@ -58,7 +58,7 @@ APPEARANCE_SETTINGS = [
         label="Image Quality",
         widget_type=WidgetType.SELECT,
         description="Quality level for rendered images",
-        options=[("low", "Low"), ("medium", "Medium"), ("high", "High")],
+        options=[("Low", "low"), ("Medium", "medium"), ("High", "high")],
         default="medium",
     ),
 ]

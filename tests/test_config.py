@@ -34,6 +34,8 @@ class TestAppearanceConfig:
             "syntax_highlighting": True,
             "show_emoji": True,
             "max_content_width": 80,
+            "show_images": False,
+            "image_quality": "medium",
         }
 
     def test_to_dict_with_show_emoji_false(self) -> None:
@@ -391,7 +393,8 @@ timeout = 60
             config_manager.max_redirects == config_manager.config.browsing.max_redirects
         )
         assert (
-            config_manager.snapshots_directory == config_manager.config.snapshots.directory
+            config_manager.snapshots_directory
+            == config_manager.config.snapshots.directory
         )
         assert (
             config_manager.syntax_highlighting

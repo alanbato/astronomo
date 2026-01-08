@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extensible media detection system ready for future audio/video support
 
 ### Fixed
+- Inline image display now works when servers return `text/gemini` MIME type for image URLs (detection now also checks file extension)
+- Inline images now render with correct aspect ratio (uses `calc_canvas_geometry` with terminal font ratio ~0.5)
+- Image widget is now properly removed when navigating away from an image page
+- Image quality setting in Appearance settings now correctly initializes (fixed Select widget options order)
 - Relative links now resolve correctly after server redirects (e.g., navigating to `/~user` which redirects to `/~user/` no longer breaks relative links like `./about.gmi`)
 - Back navigation now works correctly after downloading binary files (download pages are properly added to history)
 - Back navigation now works correctly from error pages (timeout, connection errors are properly added to history)

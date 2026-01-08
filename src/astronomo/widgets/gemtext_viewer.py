@@ -345,10 +345,9 @@ class GemtextViewer(VerticalScroll):
         """Update the displayed content with parsed Gemtext lines."""
         self.lines = lines
 
-        # Remove old content (including Center wrappers)
+        # Remove all old content (line widgets, Center wrappers, and image widgets)
         for widget in list(self.children):
-            if isinstance(widget, (GemtextLineWidget, Center)):
-                widget.remove()
+            widget.remove()
 
         # Get max width setting
         max_width = 0
