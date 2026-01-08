@@ -20,6 +20,8 @@ class InputModal(ModalScreen[str | None]):
         prompt: The prompt text from the server's META field
         url: The URL that requested input (for byte limit calculation)
         sensitive: If True, mask input (for status 11 / passwords)
+        label: Optional label to show with URL (for Spartan input links)
+        max_bytes: Maximum bytes for input (None for Gemini URL limit, 10240 for Spartan)
     """
 
     DEFAULT_CSS = """
@@ -41,6 +43,13 @@ class InputModal(ModalScreen[str | None]):
         width: 100%;
         padding: 1 0;
         color: $text;
+    }
+
+    InputModal .url-text {
+        width: 100%;
+        padding: 0 0 1 0;
+        color: $text-muted;
+        text-style: italic;
     }
 
     InputModal Input {
@@ -99,13 +108,17 @@ class InputModal(ModalScreen[str | None]):
         prompt: str,
         url: str,
         sensitive: bool = False,
+        label: str | None = None,
+        max_bytes: int | None = None,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.prompt = prompt
         self.url = url
         self.sensitive = sensitive
-        # Calculate base URL length (without query) for byte counting
+        self.label = label
+        self.max_bytes = max_bytes
+        # Calculate base URL length (without query) for byte counting (Gemini mode)
         self._base_url = url.split("?")[0]
         # Thresholds for expanding the text area
         self._expand_threshold = 100  # Characters to trigger first expansion
@@ -117,7 +130,12 @@ class InputModal(ModalScreen[str | None]):
         container = Container()
         container.border_title = title
         with container:
-            yield Label(self.prompt, classes="prompt-text")
+            # Show label and URL if provided (Spartan input links)
+            if self.label:
+                yield Label(self.label, classes="prompt-text")
+                yield Label(f"URL: {self.url}", classes="url-text")
+            else:
+                yield Label(self.prompt, classes="prompt-text")
 
             # Use Input for sensitive data (passwords), TextArea for regular input
             if self.sensitive:
@@ -182,10 +200,16 @@ class InputModal(ModalScreen[str | None]):
             byte_counter.add_class("-warning")
 
     def _calculate_remaining_bytes(self, input_value: str) -> int:
-        """Calculate remaining bytes for URL limit.
+        """Calculate remaining bytes for URL or data limit.
 
-        The Gemini spec limits URLs to 1024 bytes.
+        For Gemini (max_bytes=None): URL limit of 1024 bytes
+        For Spartan (max_bytes set): Direct data limit
         """
+        if self.max_bytes is not None:
+            # Spartan mode: count bytes of raw input
+            return self.max_bytes - len(input_value.encode("utf-8"))
+
+        # Gemini mode: count bytes of full URL
         if not input_value:
             # Just the base URL + "?" if there's input
             return 1024 - len(self._base_url.encode("utf-8")) - 1
@@ -198,7 +222,14 @@ class InputModal(ModalScreen[str | None]):
         """Format the byte counter display."""
         remaining = self._calculate_remaining_bytes(input_value)
         if remaining < 0:
-            return f"URL too long by {-remaining} bytes"
+            if self.max_bytes is not None:
+                # Spartan mode
+                return (
+                    f"Input too large by {-remaining} bytes (limit: {self.max_bytes})"
+                )
+            else:
+                # Gemini mode
+                return f"URL too long by {-remaining} bytes"
         return f"{remaining} bytes remaining"
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

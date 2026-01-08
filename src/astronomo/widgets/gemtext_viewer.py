@@ -246,10 +246,10 @@ def create_line_widget(line: GemtextLine, link_index: int = -1) -> GemtextLineWi
         TypeError: If line type doesn't match expected class
     """
     match line.line_type:
-        case LineType.LINK:
+        case LineType.LINK | LineType.INPUT_LINK:
             if not isinstance(line, GemtextLink):
                 raise TypeError(
-                    f"LineType.LINK requires GemtextLink, got {type(line).__name__}"
+                    f"Link type requires GemtextLink, got {type(line).__name__}"
                 )
             return GemtextLinkWidget(line, link_index)
         case LineType.HEADING_1 | LineType.HEADING_2 | LineType.HEADING_3:
@@ -364,7 +364,7 @@ class GemtextViewer(VerticalScroll):
         link_idx = 0
 
         for line in lines:
-            if line.line_type == LineType.LINK:
+            if line.line_type in (LineType.LINK, LineType.INPUT_LINK):
                 widget = create_line_widget(line, link_idx)
                 if isinstance(widget, GemtextLinkWidget):
                     self._link_widgets.append(widget)

@@ -24,6 +24,7 @@ class LineType(StrEnum):
 
     TEXT = "text"
     LINK = "link"
+    INPUT_LINK = "input_link"
     HEADING_1 = "heading_1"
     HEADING_2 = "heading_2"
     HEADING_3 = "heading_3"
@@ -47,11 +48,15 @@ class GemtextLink(GemtextLine):
 
     url: str
     label: str | None
+    is_input_link: bool = False
 
-    def __init__(self, raw: str, url: str, label: str | None = None):
-        self.line_type = LineType.LINK
+    def __init__(
+        self, raw: str, url: str, label: str | None = None, is_input_link: bool = False
+    ):
+        self.line_type = LineType.INPUT_LINK if is_input_link else LineType.LINK
         self.url = url
         self.label = label
+        self.is_input_link = is_input_link
         self.content = label if label else url
         self.raw = raw
 
@@ -195,7 +200,12 @@ class GemtextParser:
         Returns:
             A GemtextLine object, or None for blank lines.
         """
-        # Link lines
+        # Input link lines (Spartan protocol)
+        # Check =: before => since both start with =
+        if line.startswith("=:"):
+            return self._parse_link(line, is_input_link=True)
+
+        # Regular link lines
         if line.startswith("=>"):
             return self._parse_link(line)
 
@@ -226,28 +236,31 @@ class GemtextParser:
             raw=line,
         )
 
-    def _parse_link(self, line: str) -> GemtextLink:
+    def _parse_link(self, line: str, is_input_link: bool = False) -> GemtextLink:
         """Parse a link line.
 
         Args:
-            line: A line starting with '=>'.
+            line: A line starting with '=>' or '=:'.
+            is_input_link: True if this is a Spartan input link (=:)
 
         Returns:
             A GemtextLink object.
         """
-        # Remove the '=>' prefix
+        # Remove the '=>' or '=:' prefix
         content = line[2:].lstrip()
 
         if not content:
             # Empty link line
-            return GemtextLink(raw=line, url="", label=None)
+            return GemtextLink(
+                raw=line, url="", label=None, is_input_link=is_input_link
+            )
 
         # Split on whitespace to separate URL and label
         parts = content.split(maxsplit=1)
         url = parts[0]
         label = parts[1] if len(parts) > 1 else None
 
-        return GemtextLink(raw=line, url=url, label=label)
+        return GemtextLink(raw=line, url=url, label=label, is_input_link=is_input_link)
 
     def _parse_heading(self, line: str) -> GemtextHeading | GemtextLine:
         """Parse a heading line.

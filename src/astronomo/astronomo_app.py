@@ -288,6 +288,7 @@ class Astronomo(App[None]):
         identity: Identity | None = None,
         skip_session_prompt: bool = False,
         search_query: str | None = None,
+        spartan_data: str | None = None,
     ) -> None:
         """Fetch and display a resource via any supported protocol.
 
@@ -316,7 +317,9 @@ class Astronomo(App[None]):
             await self._fetch_finger(url, viewer, add_to_history)
             return
         elif scheme == "spartan":
-            await self._fetch_spartan(url, viewer, add_to_history)
+            await self._fetch_spartan(
+                url, viewer, add_to_history, spartan_data=spartan_data
+            )
             return
         elif scheme == "nex":
             await self._fetch_nex(url, viewer, add_to_history)
@@ -571,6 +574,20 @@ class Astronomo(App[None]):
         else:
             # Relative URL - resolve against current URL
             link_url = urljoin(self.current_url, link_url)
+            parsed = urlparse(link_url)
+
+        # Check if this is a Spartan input link (=:)
+        if message.link.is_input_link and parsed.scheme == "spartan":
+            # Show input modal for Spartan input links
+            prompt = message.link.label or "Enter data"
+            self.call_later(
+                self._handle_spartan_input,
+                link_url,
+                prompt,
+                message.link.label,
+                message.new_tab,
+            )
+            return
 
         if message.new_tab:
             # Open link in a new tab
@@ -1157,6 +1174,7 @@ class Astronomo(App[None]):
         viewer: GemtextViewer,
         add_to_history: bool,
         redirect_count: int = 0,
+        spartan_data: str | None = None,
     ) -> None:
         """Fetch and display a Spartan resource.
 
@@ -1165,6 +1183,7 @@ class Astronomo(App[None]):
             viewer: The GemtextViewer to update
             add_to_history: Whether to add to history
             redirect_count: Number of redirects followed so far (internal)
+            spartan_data: Optional data to upload (for input links =:)
         """
         import asyncio
 
@@ -1174,6 +1193,7 @@ class Astronomo(App[None]):
             result = await fetch_spartan(
                 url,
                 timeout=self.config_manager.timeout,
+                data=spartan_data,
             )
 
             # Handle redirect - track redirect count to prevent loops
@@ -1186,11 +1206,13 @@ class Astronomo(App[None]):
                     )
                     self._display_error_page(url, error_text, viewer, add_to_history)
                     return
+                # Don't pass spartan_data on redirect (only send data on initial request)
                 await self._fetch_spartan(
                     result.redirect_url,
                     viewer,
                     add_to_history,
                     redirect_count + 1,
+                    spartan_data=None,
                 )
                 return
 
@@ -1367,6 +1389,46 @@ class Astronomo(App[None]):
 
         self.push_screen(
             InputModal(prompt=prompt, url=url, sensitive=False),
+            on_result,
+        )
+
+    def _handle_spartan_input(
+        self, url: str, prompt: str, label: str | None, new_tab: bool = False
+    ) -> None:
+        """Handle Spartan input link by showing InputModal.
+
+        Args:
+            url: The Spartan URL to submit data to
+            prompt: The prompt text (from link label)
+            label: The link label for display
+            new_tab: Whether to open result in a new tab
+        """
+
+        def on_result(data: str | None) -> None:
+            if data is not None:
+                # Validate 10KB limit (Spartan spec)
+                byte_count = len(data.encode("utf-8"))
+                if byte_count > 10240:  # 10KB = 10240 bytes
+                    self.notify(
+                        f"Input too large ({byte_count} bytes). Spartan limit is 10KB (10240 bytes).",
+                        severity="error",
+                        timeout=5,
+                    )
+                    return
+
+                if new_tab:
+                    self._open_in_new_tab(url, spartan_data=data)
+                else:
+                    self.get_url(url, spartan_data=data)
+
+        self.push_screen(
+            InputModal(
+                prompt=prompt,
+                url=url,
+                label=label,
+                sensitive=False,
+                max_bytes=10240,
+            ),
             on_result,
         )
 
@@ -1880,11 +1942,12 @@ class Astronomo(App[None]):
         url_input = self.query_one("#url-input", Input)
         url_input.focus()
 
-    def _open_in_new_tab(self, url: str) -> None:
+    def _open_in_new_tab(self, url: str, spartan_data: str | None = None) -> None:
         """Open a URL in a new tab.
 
         Args:
             url: The URL to open in the new tab
+            spartan_data: Optional data for Spartan input links
         """
         if not self.tab_manager.can_create_tab():
             self.notify("Maximum number of tabs reached", severity="warning")
@@ -1901,7 +1964,7 @@ class Astronomo(App[None]):
         self._update_tab_bar()
 
         # Fetch the URL in the new tab
-        self.get_url(url)
+        self.get_url(url, spartan_data=spartan_data)
 
     def action_close_tab(self) -> None:
         """Close the current tab."""
