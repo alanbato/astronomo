@@ -108,6 +108,12 @@ Seamless support for Gemini's input requests:
 - **Sensitive input** — Status 11 for password-style masked entry
 - **Byte counter** — Visual feedback for URL length limits
 
+### Inline Images (Optional)
+Display images directly in the terminal as ANSI art:
+- **Formats supported** — PNG, JPEG, GIF, WebP
+- **Quality settings** — Low, Medium, High rendering options
+- **Optional dependency** — Install with `pip install astronomo[chafa]`
+
 ### Multi-Protocol Support
 Browse beyond Gemini with native support for classic protocols:
 

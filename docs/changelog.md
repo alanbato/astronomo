@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HTTP/HTTPS links now open in the system browser instead of showing an error
 - "Open File" button on download complete page: After downloading binary files, click to open with system default application (uses `xdg-open` on Linux, `open` on macOS, `start` on Windows)
 - Inline image display with Chafa: Automatically render images (PNG, JPEG, GIF, WebP) as ANSI art in the terminal
-  - Requires `chafa.py` optional dependency (install with `uv sync --group chafa`)
+  - Requires `chafa.py` optional dependency (install with `pip install astronomo[chafa]` or `uv tool install astronomo --with chafa.py`)
   - Toggle display in Settings → Appearance → Show Images (off by default)
   - Quality settings: Low, Medium (default), High - controls dithering and rendering detail
   - LRU cache: Stores up to 10 images (100MB max) in `~/.cache/astronomo/images/` for fast history navigation
@@ -57,6 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extensible media detection system ready for future audio/video support
 
 ### Fixed
+- Chafa (inline images) is now a proper optional dependency installable via `pip install astronomo[chafa]` instead of only being available in development mode
+- Added documentation for Chafa installation in installation guide, README, and changelog
 - Inline image display now works when servers return `text/gemini` MIME type for image URLs (detection now also checks file extension)
 - Inline images now render with correct aspect ratio (uses `calc_canvas_geometry` with terminal font ratio ~0.5)
 - Image widget is now properly removed when navigating away from an image page
