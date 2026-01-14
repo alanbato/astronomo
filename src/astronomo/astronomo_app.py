@@ -1810,6 +1810,7 @@ class Astronomo(App[None]):
         if entry:
             self._restore_from_history(entry)
             self._update_navigation_buttons()
+            self._update_tab_title()
 
     def action_navigate_forward(self) -> None:
         """Navigate forward in history."""
@@ -1824,6 +1825,7 @@ class Astronomo(App[None]):
         if entry:
             self._restore_from_history(entry)
             self._update_navigation_buttons()
+            self._update_tab_title()
 
     # --- Bookmarks ---
 
