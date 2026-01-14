@@ -149,7 +149,7 @@ class ManageUrlsModal(ModalScreen[None]):
                 if isinstance(widget, UrlItem):
                     self._remove_url(widget.url)
                     break
-                widget = widget.parent  # type: ignore
+                widget = widget.parent
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Handle Enter key in URL input."""

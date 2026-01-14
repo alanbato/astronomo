@@ -32,12 +32,8 @@ class TestOpmlExport:
 
         # Add folder with feeds
         folder = manager.add_folder("Tech News")
-        manager.add_feed(
-            "gemini://tech.com/rss", "Tech Blog", folder_id=folder.id
-        )
-        manager.add_feed(
-            "gemini://dev.com/atom", "Dev Updates", folder_id=folder.id
-        )
+        manager.add_feed("gemini://tech.com/rss", "Tech Blog", folder_id=folder.id)
+        manager.add_feed("gemini://dev.com/atom", "Dev Updates", folder_id=folder.id)
 
         return manager
 
@@ -99,10 +95,7 @@ class TestOpmlExport:
         assert body is not None
 
         # Find root-level feed outlines
-        root_feeds = [
-            o for o in body.findall("outline")
-            if o.get("type") == "rss"
-        ]
+        root_feeds = [o for o in body.findall("outline") if o.get("type") == "rss"]
 
         assert len(root_feeds) == 2
         urls = {feed.get("xmlUrl") for feed in root_feeds}
@@ -123,10 +116,7 @@ class TestOpmlExport:
         assert body is not None
 
         # Find folder outlines (no type="rss")
-        folders = [
-            o for o in body.findall("outline")
-            if o.get("type") != "rss"
-        ]
+        folders = [o for o in body.findall("outline") if o.get("type") != "rss"]
 
         assert len(folders) == 1
         folder = folders[0]
@@ -229,9 +219,7 @@ class TestOpmlImport:
         opml_path.write_text(opml_content)
         return opml_path
 
-    def test_import_simple_feeds(
-        self, manager: FeedManager, simple_opml: Path
-    ) -> None:
+    def test_import_simple_feeds(self, manager: FeedManager, simple_opml: Path) -> None:
         """Test importing simple feeds without folders."""
         feeds_added, feeds_skipped = import_opml(manager, simple_opml)
 
@@ -303,7 +291,9 @@ class TestOpmlImport:
         """Test importing into a folder that already exists."""
         # Create "Tech" folder beforehand
         existing_folder = manager.add_folder("Tech")
-        manager.add_feed("gemini://existing.com/feed.xml", "Existing", folder_id=existing_folder.id)
+        manager.add_feed(
+            "gemini://existing.com/feed.xml", "Existing", folder_id=existing_folder.id
+        )
 
         feeds_added, feeds_skipped = import_opml(manager, opml_with_folders)
 

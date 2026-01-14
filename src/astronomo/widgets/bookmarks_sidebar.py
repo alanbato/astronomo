@@ -238,13 +238,13 @@ class BookmarksSidebar(Container):
             if not is_collapsed:
                 for bookmark in self.manager.get_bookmarks_in_folder(folder.id):
                     bookmark_widget = BookmarkWidget(bookmark, indented=True)
-                    self._items.append(bookmark_widget)  # type: ignore[arg-type]
+                    self._items.append(bookmark_widget)
                     widgets_to_mount.append(bookmark_widget)
 
         # Add root-level bookmarks
         for bookmark in self.manager.get_root_bookmarks():
             bookmark_widget = BookmarkWidget(bookmark, indented=False)
-            self._items.append(bookmark_widget)  # type: ignore[arg-type]
+            self._items.append(bookmark_widget)
             widgets_to_mount.append(bookmark_widget)
 
         # Mount all widgets

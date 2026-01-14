@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 # Try to import Chafa - it's an optional dependency
 try:
-    from chafa import (
+    from chafa import (  # type: ignore[unresolved-import]
         Canvas,
         CanvasConfig,
         CanvasMode,
@@ -21,7 +21,7 @@ try:
         DitherMode,
         PixelMode,
     )
-    from chafa.loader import Loader
+    from chafa.loader import Loader  # type: ignore[unresolved-import]
 
     CHAFA_AVAILABLE = True
 except ImportError:

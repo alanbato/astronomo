@@ -587,8 +587,12 @@ class TestFeedManager:
         folder2 = manager.add_folder("News")
 
         feed1 = manager.add_feed("gemini://a.com/feed.xml", "Feed A")
-        feed2 = manager.add_feed("gemini://b.com/feed.xml", "Feed B", folder_id=folder1.id)
-        feed3 = manager.add_feed("gemini://c.com/feed.xml", "Feed C", folder_id=folder2.id)
+        feed2 = manager.add_feed(
+            "gemini://b.com/feed.xml", "Feed B", folder_id=folder1.id
+        )
+        feed3 = manager.add_feed(
+            "gemini://c.com/feed.xml", "Feed C", folder_id=folder2.id
+        )
 
         # Move feed1 to folder1
         manager.update_feed(feed1.id, folder_id=folder1.id)
