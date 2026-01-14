@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extensible media detection system ready for future audio/video support
 
 ### Fixed
+- Refresh (Ctrl+R) now properly updates history: navigating away and back after refreshing a page now shows the refreshed content instead of the stale cached version
 - Chafa (inline images) is now a proper optional dependency installable via `pip install astronomo[chafa]` instead of only being available in development mode
 - Added documentation for Chafa installation in installation guide, README, and changelog
 - Inline image display now works when servers return `text/gemini` MIME type for image URLs (detection now also checks file extension)

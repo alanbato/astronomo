@@ -1715,13 +1715,14 @@ class Astronomo(App[None]):
         return f"gemini://{url}"
 
     def _update_current_history_state(self) -> None:
-        """Update the current history entry with current scroll/link state."""
+        """Update the current history entry with current scroll/link/content state."""
         current_entry = self.history.current()
         if current_entry:
             viewer = self.query_one("#content", GemtextViewer)
             # Update the entry in place (dataclass fields are mutable)
             current_entry.scroll_position = viewer.scroll_y
             current_entry.link_index = viewer.current_link_index
+            current_entry.content = viewer.lines.copy()
 
     def _restore_from_history(self, entry: HistoryEntry) -> None:
         """Restore UI state from a history entry."""
