@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Graceful fallback: If Chafa unavailable or rendering fails, falls back to binary download
   - Extensible media detection system ready for future audio/video support
 
+### Changed
+- Preformatted code blocks now respect `max_content_width` setting and are centered on screen like other content
+
 ### Fixed
 - Browser tab title now updates when navigating back/forward in history
 - Refresh (Ctrl+R) now properly updates history: navigating away and back after refreshing a page now shows the refreshed content instead of the stale cached version

@@ -64,7 +64,7 @@ syntax_highlighting = true
 show_emoji = true
 
 # Maximum width for text content in characters (0 to disable, minimum 40)
-# Preformatted blocks and code are always shown at full width
+# All content including preformatted blocks is centered and constrained
 max_content_width = 80
 
 # Show images inline (requires chafapy optional dependency)

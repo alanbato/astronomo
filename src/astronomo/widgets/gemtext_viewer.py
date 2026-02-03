@@ -151,8 +151,6 @@ class GemtextPreformattedWidget(GemtextLineWidget):
 
     def __init__(self, line: GemtextLine, **kwargs) -> None:
         super().__init__(line, **kwargs)
-        # Preformatted blocks should not be width-constrained
-        self.add_class("-full-width")
 
     def render(self) -> Text | Content:
         content = self.line.content
