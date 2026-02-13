@@ -96,6 +96,13 @@ identity_prompt = "when_ambiguous"
 # Default: ~/.local/share/astronomo/snapshots
 # Uncomment to use a custom directory:
 # directory = "/path/to/custom/snapshots"
+
+[mail]
+# Auto-sync GMAP accounts when opening the Mail screen
+auto_sync = true
+
+# Sync interval in seconds (minimum 30)
+sync_interval = 300
 """
 
 
@@ -277,6 +284,44 @@ class SnapshotsConfig:
 
 
 @dataclass
+class MailConfig:
+    """Mail (GMAP) settings.
+
+    Attributes:
+        auto_sync: Whether to auto-sync on MailScreen open
+        sync_interval: Sync interval in seconds
+    """
+
+    auto_sync: bool = True
+    sync_interval: int = 300
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for TOML serialization."""
+        return {
+            "auto_sync": self.auto_sync,
+            "sync_interval": self.sync_interval,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Self:
+        """Create from dictionary with validation and fallback to defaults."""
+        defaults = cls()
+
+        auto_sync = data.get("auto_sync", defaults.auto_sync)
+        if not isinstance(auto_sync, bool):
+            auto_sync = defaults.auto_sync
+
+        sync_interval = data.get("sync_interval", defaults.sync_interval)
+        if not isinstance(sync_interval, int) or sync_interval < 30:
+            sync_interval = defaults.sync_interval
+
+        return cls(
+            auto_sync=auto_sync,
+            sync_interval=sync_interval,
+        )
+
+
+@dataclass
 class Config:
     """Root configuration container.
 
@@ -284,11 +329,13 @@ class Config:
         appearance: Visual appearance settings
         browsing: Browsing behavior settings
         snapshots: Snapshot settings
+        mail: Mail (GMAP) settings
     """
 
     appearance: AppearanceConfig = field(default_factory=AppearanceConfig)
     browsing: BrowsingConfig = field(default_factory=BrowsingConfig)
     snapshots: SnapshotsConfig = field(default_factory=SnapshotsConfig)
+    mail: MailConfig = field(default_factory=MailConfig)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for TOML serialization."""
@@ -296,6 +343,7 @@ class Config:
             "appearance": self.appearance.to_dict(),
             "browsing": self.browsing.to_dict(),
             "snapshots": self.snapshots.to_dict(),
+            "mail": self.mail.to_dict(),
         }
 
     @classmethod
@@ -305,6 +353,7 @@ class Config:
             appearance=AppearanceConfig.from_dict(data.get("appearance", {})),
             browsing=BrowsingConfig.from_dict(data.get("browsing", {})),
             snapshots=SnapshotsConfig.from_dict(data.get("snapshots", {})),
+            mail=MailConfig.from_dict(data.get("mail", {})),
         )
 
 

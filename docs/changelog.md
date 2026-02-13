@@ -7,7 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- GMAP mail: Compose now checks the Misfin send response status; failed deliveries show an error instead of silently proceeding
+- GMAP mail: Sent copy is now tagged as `Sent` and marked as read instead of appearing in Inbox as unread
+- GMAP mail: Trashing a message now removes the Inbox tag so it disappears from the Inbox view immediately
+- GMAP mail: Messages with Trash tag are excluded from all non-Trash tag views (per GMAP spec)
+- GMAP mail: Single click or keyboard focus on a message now shows it in the reading pane (no longer requires double-click)
+- GMAP mail: Message preview no longer crashes with pydantic TypeError on newer Python versions; parsing now happens eagerly with proper error handling
+
+### Changed
+- GMAP mail: Renamed "Preview" panel to "Message" since it is the full reading interface
+- GMAP mail: Up/Down arrows navigate within the current panel without switching panels; Left/Right arrows and Tab/Shift+Tab switch between panels
+- GMAP mail: Non-email app bindings (bookmarks, snapshots, tabs, etc.) are suppressed while the mail screen is open
+- GMAP mail: Message list cards now show a truncated body preview beneath the subject line
+
 ### Added
+- GMAP mail client: Full terminal mail experience for Misfin mailboxes via GMAP protocol (Ctrl+E)
+  - Three-pane mail interface: tags sidebar, message list, and message preview
+  - Account management with TOML persistence and certificate-based authentication
+  - SQLite message cache for fast queries and offline access at `~/.cache/astronomo/`
+  - Incremental sync with timestamp-based filtering for efficient updates
+  - Tag operations: archive (a), trash (d), toggle unread (u), manage custom tags (t)
+  - Two-step delete workflow: move to Trash first, then permanently delete (D)
+  - Compose and reply with gemtext body, sent via Misfin protocol
+  - Sent mail copies stored on GMAP server for Sent folder tracking
+  - Background sync using `@work` for non-blocking UI
+  - Mail settings tab in Settings (Ctrl+,) for account management
+  - Mail configuration section in config.toml (auto_sync, sync_interval)
 - Browser tabs: Multiple tabs with independent browsing sessions
   - Tab bar at the top with clickable tabs showing page titles
   - Keyboard shortcuts: Ctrl+T (new tab), Ctrl+W (close tab), Ctrl+Tab/Ctrl+Shift+Tab (switch tabs), Ctrl+1-9 (jump to tab)

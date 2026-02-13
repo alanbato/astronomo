@@ -13,6 +13,7 @@ from astronomo.widgets.settings import (
     BrowsingSettings,
     CertificatesSettings,
     KnownHostsSettings,
+    MailSettings,
 )
 
 if TYPE_CHECKING:
@@ -51,7 +52,7 @@ class SettingsScreen(ModalScreen[None]):
         padding: 1;
     }
 
-    AppearanceSettings, BrowsingSettings, CertificatesSettings, KnownHostsSettings {
+    AppearanceSettings, BrowsingSettings, CertificatesSettings, KnownHostsSettings, MailSettings {
         height: 1fr;
         width: 1fr;
     }
@@ -59,7 +60,8 @@ class SettingsScreen(ModalScreen[None]):
     AppearanceSettings VerticalScroll,
     BrowsingSettings VerticalScroll,
     CertificatesSettings VerticalScroll,
-    KnownHostsSettings VerticalScroll {
+    KnownHostsSettings VerticalScroll,
+    MailSettings VerticalScroll {
         height: 1fr;
     }
 
@@ -90,6 +92,8 @@ class SettingsScreen(ModalScreen[None]):
                     yield CertificatesSettings(app.identities)
                 with TabPane("Known Hosts", id="tab-known-hosts"):
                     yield KnownHostsSettings()
+                with TabPane("Mail", id="tab-mail"):
+                    yield MailSettings(app.gmap_accounts)
             yield Static("Press Escape or Ctrl+, to close", id="settings-hint")
 
     def action_dismiss_settings(self) -> None:

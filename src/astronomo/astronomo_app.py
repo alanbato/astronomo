@@ -35,7 +35,9 @@ from astronomo.media_detector import MediaDetector
 from astronomo.parser import GemtextLine, LineType, parse_gemtext
 from astronomo.response_handler import format_response
 from astronomo.widgets.gemtext_image import CHAFA_AVAILABLE
-from astronomo.screens import FeedsScreen, SettingsScreen
+from astronomo.gmap_accounts import GmapAccountManager
+from astronomo.mail_cache import MailCache
+from astronomo.screens import FeedsScreen, MailScreen, SettingsScreen
 from astronomo.tabs import Tab, TabManager
 from astronomo.widgets import (
     AddBookmarkModal,
@@ -98,6 +100,7 @@ class Astronomo(App[None]):
         ("ctrl+s", "save_snapshot", "Save Snapshot"),
         ("ctrl+k", "quick_navigation", "Quick Nav"),
         ("ctrl+j", "open_feeds", "Feeds"),
+        ("ctrl+e", "open_mail", "Mail"),
         ("ctrl+comma", "toggle_settings", "Settings"),
         # Tab management
         ("ctrl+t", "new_tab", "New Tab"),
@@ -135,6 +138,8 @@ class Astronomo(App[None]):
         self.bookmarks = BookmarkManager()
         self.feeds = FeedManager()
         self.identities = IdentityManager()
+        self.gmap_accounts = GmapAccountManager()
+        self.mail_cache = MailCache()
         self._navigating_history = False  # Flag to prevent history loops
         self._initial_url = initial_url
 
@@ -2006,6 +2011,16 @@ class Astronomo(App[None]):
     def action_open_feeds(self) -> None:
         """Open the feeds screen."""
         self.push_screen(FeedsScreen(self.feeds))
+
+    def action_open_mail(self) -> None:
+        """Open the mail screen."""
+        self.push_screen(
+            MailScreen(
+                account_manager=self.gmap_accounts,
+                identity_manager=self.identities,
+                cache=self.mail_cache,
+            )
+        )
 
     # --- Tab Management ---
 
