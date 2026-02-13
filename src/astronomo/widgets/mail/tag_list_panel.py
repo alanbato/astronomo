@@ -33,6 +33,13 @@ class TagWidget(Static):
     }
     """
 
+    class Clicked(Message):
+        """Emitted when a tag widget is clicked."""
+
+        def __init__(self, tag: str) -> None:
+            self.tag = tag
+            super().__init__()
+
     def __init__(
         self,
         tag: str,
@@ -46,6 +53,9 @@ class TagWidget(Static):
         self.unread = unread
         if unread > 0:
             self.add_class("-has-unread")
+
+    def on_click(self) -> None:
+        self.post_message(self.Clicked(self.tag))
 
     def render(self) -> str:
         badge = f" ({self.unread})" if self.unread > 0 else ""
@@ -196,6 +206,13 @@ class TagListPanel(VerticalScroll, can_focus=True):
         tag = self.get_selected_tag()
         if tag:
             self.post_message(self.TagSelected(tag))
+
+    def on_tag_widget_clicked(self, message: TagWidget.Clicked) -> None:
+        """Handle click on a tag widget."""
+        if message.tag in self._tags:
+            self.selected_index = self._tags.index(message.tag)
+            self._update_selection()
+            self.post_message(self.TagSelected(message.tag))
 
     def compose(self) -> ComposeResult:
         yield Label("No account selected", classes="empty-message")

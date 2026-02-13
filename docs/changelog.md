@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- GMAP mail: Tags in the sidebar are now clickable — clicking a tag selects it and loads its messages
 - GMAP mail: Compose now checks the Misfin send response status; failed deliveries show an error instead of silently proceeding
 - GMAP mail: Sent copy is now tagged as `Sent` and marked as read instead of appearing in Inbox as unread
 - GMAP mail: Trashing a message now removes the Inbox tag so it disappears from the Inbox view immediately
