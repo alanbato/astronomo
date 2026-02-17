@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GMAP mail: Messages with Trash tag are excluded from all non-Trash tag views (per GMAP spec)
 - GMAP mail: Single click or keyboard focus on a message now shows it in the reading pane (no longer requires double-click)
 - GMAP mail: Message preview no longer crashes with pydantic TypeError on newer Python versions; parsing now happens eagerly with proper error handling
+- GMAP mail: Compose now validates recipient address format more strictly — both mailbox and hostname parts must be non-empty and hostname must contain a dot (e.g., `user@host.tld`)
+- GMAP mail: Compose now notifies the user with a warning if the Sent copy fails to save, instead of silently logging the error
+- Fixed `Select.BLANK` deprecation — replaced with `Select.NULL` across all modals for Textual 8.0 compatibility (bookmark, feed, and mail account modals)
 
 ### Improved
 - GMAP mail: Tag checkboxes in "Manage Tags" modal now use a 2-column grid layout instead of one-per-line
@@ -40,7 +43,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Sent mail copies stored on GMAP server for Sent folder tracking
   - Background sync using `@work` for non-blocking UI
   - Mail settings tab in Settings (Ctrl+,) for account management
-  - Mail configuration section in config.toml (auto_sync, sync_interval)
 - Browser tabs: Multiple tabs with independent browsing sessions
   - Tab bar at the top with clickable tabs showing page titles
   - Keyboard shortcuts: Ctrl+T (new tab), Ctrl+W (close tab), Ctrl+Tab/Ctrl+Shift+Tab (switch tabs), Ctrl+1-9 (jump to tab)

@@ -130,7 +130,7 @@ class AddAccountModal(ModalScreen[GmapAccount | None]):
 
         identity_select = self.query_one("#identity-select", Select)
         identity_id = (
-            str(identity_select.value) if identity_select.value != Select.BLANK else ""
+            str(identity_select.value) if identity_select.value != Select.NULL else ""
         )
 
         # Validation

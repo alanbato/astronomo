@@ -151,9 +151,11 @@ class ComposeModal(ModalScreen[bool]):
             self.app.notify("Recipient is required", severity="error")
             return
 
-        if "@" not in to:
+        # Validate Misfin address format: mailbox@hostname
+        parts = to.split("@")
+        if len(parts) != 2 or not parts[0] or not parts[1] or "." not in parts[1]:
             self.app.notify(
-                "Invalid address format (use user@hostname)", severity="error"
+                "Invalid address format (use user@hostname.tld)", severity="error"
             )
             return
 
@@ -211,6 +213,9 @@ class ComposeModal(ModalScreen[bool]):
                         )
                 except Exception as e:
                     logger.warning("Failed to save to Sent: %s", e)
+                    self.app.notify(
+                        "Message sent, but Sent copy failed", severity="warning"
+                    )
 
             self.dismiss(True)
 

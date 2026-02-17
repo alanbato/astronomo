@@ -94,7 +94,7 @@ class EditFeedModal(ModalScreen[bool]):
             yield Label("Folder:")
             yield Select(
                 self._get_folder_options(),
-                value=self.feed.folder_id or Select.BLANK,
+                value=self.feed.folder_id or Select.NULL,
                 id="folder-select",
                 allow_blank=True,
                 prompt="(No folder)",
@@ -138,7 +138,7 @@ class EditFeedModal(ModalScreen[bool]):
         folder_select = self.query_one("#folder-select", Select)
         folder_id: str | None = None
 
-        if folder_select.value != Select.BLANK:
+        if folder_select.value != Select.NULL:
             folder_id = str(folder_select.value)
 
         # Update the feed

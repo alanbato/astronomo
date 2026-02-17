@@ -114,7 +114,7 @@ class AddFeedModal(ModalScreen[Feed | None]):
             yield Label("Folder:")
             yield Select(
                 self._get_folder_options(),
-                value=Select.BLANK,
+                value=Select.NULL,
                 id="folder-select",
                 allow_blank=True,
                 prompt="(No folder)",
@@ -206,7 +206,7 @@ class AddFeedModal(ModalScreen[Feed | None]):
                 new_folder = self.manager.add_folder(new_folder_name)
                 folder_id = new_folder.id
         elif (
-            folder_select.value != Select.BLANK
+            folder_select.value != Select.NULL
             and folder_select.value != NEW_FOLDER_SENTINEL
         ):
             folder_id = str(folder_select.value)
