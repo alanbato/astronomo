@@ -34,6 +34,20 @@ If you haven't set up a mail account yet, press ++ctrl+a++ to add one.
 !!! tip
     The identity you select must be trusted by the GMAP server. Check with your server administrator if you're unsure which certificate to use.
 
+## Switching Accounts
+
+Press ++ctrl+l++ or click the **Switch Account** button in the mail header to open the account switcher.
+
+1. Select an account from the list
+2. Press ++enter++ to switch
+
+The current account is indicated with a `>` marker. Switching accounts reloads the message cache and syncs from the new account's server.
+
+To remove an account, click the **X** button next to it in the switcher.
+
+!!! tip
+    The Switch Account button only appears when you have more than one account configured.
+
 ## Reading Messages
 
 ### Three-Pane Layout

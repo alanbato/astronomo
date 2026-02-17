@@ -12,7 +12,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal
 from textual.screen import Screen
-from textual.widgets import Footer, Label
+from textual.widgets import Button, Footer, Label
 
 from astronomo.gmap_accounts import GmapAccount, GmapAccountManager
 from astronomo.gmap_client import (
@@ -43,6 +43,7 @@ class MailScreen(Screen):
     }
 
     MailScreen #mail-header {
+        layout: horizontal;
         height: auto;
         width: 100%;
         padding: 1;
@@ -56,6 +57,22 @@ class MailScreen(Screen):
     MailScreen #mail-sync-status {
         color: $text-muted;
         padding-left: 2;
+    }
+
+    MailScreen #switch-account-btn {
+        min-width: 0;
+        height: 1;
+        margin-left: 2;
+        background: $primary 20%;
+        border: none;
+    }
+
+    MailScreen #switch-account-btn:hover {
+        background: $primary 40%;
+    }
+
+    MailScreen #switch-account-btn.-hidden {
+        display: none;
     }
 
     MailScreen #mail-content {
@@ -99,6 +116,7 @@ class MailScreen(Screen):
         Binding("up", "cursor_up", show=False),
         Binding("down", "cursor_down", show=False),
         Binding("ctrl+a", "add_account", "Add Account"),
+        Binding("ctrl+l", "switch_account", "Switch", priority=True),
         # Suppress non-email app bindings
         Binding("ctrl+b", "noop", show=False, priority=True),
         Binding("ctrl+d", "noop", show=False, priority=True),
@@ -138,6 +156,7 @@ class MailScreen(Screen):
     def compose(self) -> ComposeResult:
         with Container(id="mail-header"):
             yield Label("Mail", id="mail-title")
+            yield Button("Switch Account", id="switch-account-btn", classes="-hidden")
             yield Label("", id="mail-sync-status")
 
         with Horizontal(id="mail-content"):
@@ -166,6 +185,11 @@ class MailScreen(Screen):
         self._update_title(
             f"Mail — {self.current_account.mailbox}@{self.current_account.hostname}"
         )
+
+        # Show switch button if multiple accounts
+        if len(accounts) > 1:
+            self.query_one("#switch-account-btn", Button).remove_class("-hidden")
+
         self.query_one("#tag-panel", TagListPanel).focus()
 
         # Load cached data first, then sync in background
@@ -769,7 +793,71 @@ class MailScreen(Screen):
             self.app.notify(f"Added account: {account.name}")
             self.current_account = account
             self._update_title(f"Mail — {account.mailbox}@{account.hostname}")
+            # Show switch button now that there may be multiple accounts
+            accounts = self.account_manager.get_all_accounts()
+            if len(accounts) > 1:
+                self.query_one("#switch-account-btn", Button).remove_class("-hidden")
+            self._load_from_cache()
             self._sync_account(account)
+
+    def action_switch_account(self) -> None:
+        """Open the account switcher modal."""
+        from astronomo.widgets.mail.switch_account_modal import SwitchAccountModal
+
+        accounts = self.account_manager.get_all_accounts()
+        if not accounts:
+            self.app.notify("No accounts configured", severity="information")
+            return
+
+        self.app.push_screen(
+            SwitchAccountModal(
+                accounts=accounts,
+                account_manager=self.account_manager,
+                current_account=self.current_account,
+            ),
+            self._on_account_switched,
+        )
+
+    def _on_account_switched(self, account: GmapAccount | None) -> None:
+        """Handle account switch from modal."""
+        if account is None:
+            # Check if accounts were deleted — hide button if <= 1 left
+            accounts = self.account_manager.get_all_accounts()
+            if len(accounts) <= 1:
+                self.query_one("#switch-account-btn", Button).add_class("-hidden")
+            if not accounts:
+                self.current_account = None
+                self._update_title("Mail — No accounts configured")
+                self.query_one("#message-panel", MessageListPanel).show_placeholder()
+                self.query_one("#preview-panel", MessagePreviewPanel).show_placeholder()
+            return
+        if self.current_account and account.id == self.current_account.id:
+            return
+
+        self.current_account = account
+        self._update_title(f"Mail — {account.mailbox}@{account.hostname}")
+        self.current_tag = "Inbox"
+        self.current_msgid = None
+
+        # Update switch button visibility
+        accounts = self.account_manager.get_all_accounts()
+        if len(accounts) <= 1:
+            self.query_one("#switch-account-btn", Button).add_class("-hidden")
+
+        # Reset panels
+        message_panel = self.query_one("#message-panel", MessageListPanel)
+        message_panel.show_placeholder()
+        preview_panel = self.query_one("#preview-panel", MessagePreviewPanel)
+        preview_panel.show_placeholder()
+
+        # Reload for new account
+        self._load_from_cache()
+        self._sync_account(account)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "switch-account-btn":
+            self.action_switch_account()
 
     def action_noop(self) -> None:
         """No-op action to suppress inherited app bindings."""

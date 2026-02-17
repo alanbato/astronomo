@@ -131,6 +131,7 @@ When the mail screen is open (++ctrl+e++):
 | ++ctrl+n++ | Compose new message |
 | ++ctrl+r++ | Sync messages |
 | ++ctrl+a++ | Add account |
+| ++ctrl+l++ | Switch account |
 
 ### Message Actions
 
