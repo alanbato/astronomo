@@ -39,6 +39,14 @@ class TagManageModal(ModalScreen[list[str] | None]):
         margin-bottom: 1;
     }
 
+    TagManageModal #tag-grid {
+        layout: grid;
+        grid-size: 2;
+        grid-gutter: 0 1;
+        height: auto;
+        width: 100%;
+    }
+
     TagManageModal .add-tag-row {
         width: 100%;
         height: auto;
@@ -87,9 +95,10 @@ class TagManageModal(ModalScreen[list[str] | None]):
             yield Label("Select tags for this message:")
 
             with VerticalScroll():
-                for tag in self._all_tags:
-                    checked = tag in self._current_tags
-                    yield Checkbox(tag, value=checked, id=f"tag-{tag}")
+                with Container(id="tag-grid"):
+                    for tag in self._all_tags:
+                        checked = tag in self._current_tags
+                        yield Checkbox(tag, value=checked, id=f"tag-{tag}")
 
             # Add new tag
             with Horizontal(classes="add-tag-row"):
@@ -138,8 +147,8 @@ class TagManageModal(ModalScreen[list[str] | None]):
 
         # Add checkbox for the new tag
         self._all_tags.append(tag_name)
-        scroll = self.query_one("VerticalScroll")
-        scroll.mount(Checkbox(tag_name, value=True, id=f"tag-{tag_name}"))
+        grid = self.query_one("#tag-grid")
+        grid.mount(Checkbox(tag_name, value=True, id=f"tag-{tag_name}"))
         tag_input.value = ""
 
     def _save_tags(self) -> None:

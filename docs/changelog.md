@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GMAP mail: Single click or keyboard focus on a message now shows it in the reading pane (no longer requires double-click)
 - GMAP mail: Message preview no longer crashes with pydantic TypeError on newer Python versions; parsing now happens eagerly with proper error handling
 
+### Improved
+- GMAP mail: Tag checkboxes in "Manage Tags" modal now use a 2-column grid layout instead of one-per-line
+
 ### Changed
 - GMAP mail: Renamed "Preview" panel to "Message" since it is the full reading interface
 - GMAP mail: Up/Down arrows navigate within the current panel without switching panels; Left/Right arrows and Tab/Shift+Tab switch between panels
