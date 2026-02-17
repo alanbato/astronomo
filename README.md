@@ -31,8 +31,10 @@ Whether you're exploring Geminispace for the first time or looking for a better 
 | **Bookmark Folders** | Yes | Flat list | Flat list |
 | **Client Certificates** | Yes | Yes | No |
 | **TOFU Security** | Yes | Yes | No |
-| **Tabs** | Coming soon | Yes | No |
-| **Multi-protocol** | Gemini + Gopher + Finger | Proxying | Gopher+Finger |
+| **Tabs** | Yes | Yes | No |
+| **Multi-protocol** | Gemini + Gopher + Finger + Nex + Spartan | Proxying | Gopher+Finger |
+| **Mail (Misfin)** | Yes (GMAP) | No | No |
+| **Feed Reader** | Yes (RSS/Atom) | No | No |
 | **Development** | Active | Maintenance mode | Maintenance mode |
 | **Language** | Python | Go | Go |
 
@@ -130,7 +132,23 @@ Browse beyond Gemini with native support for classic protocols:
 **Smart URL Detection:**
 - `user@host` → automatically uses `finger://`
 - `gopher.example.com` → automatically uses `gopher://`
+- `misfin:user@host` → opens mail compose
 - Everything else → defaults to `gemini://`
+
+### GMAP Mail
+Full terminal mail client for Misfin mailboxes via the GMAP protocol:
+- **Three-pane interface** — Tags sidebar, message list, and reading pane (Ctrl+E)
+- **Compose and reply** — Send messages via Misfin protocol with Gemtext formatting
+- **Tag management** — Archive, trash, unread, and custom tags
+- **Offline access** — SQLite message cache for fast queries
+- **Certificate auth** — Uses client certificates for authentication
+- **Misfin links** — `misfin:` URLs in pages open compose with pre-filled recipients
+
+### RSS/Atom Feeds
+Subscribe to and read feeds from Geminispace:
+- **Feed reader** — Browse articles with read/unread tracking (Ctrl+J)
+- **Folder organization** — Group subscriptions into folders
+- **OPML support** — Import and export feed lists
 
 ### Configuration
 - **XDG-compliant** — Config stored at `~/.config/astronomo/`
@@ -204,8 +222,13 @@ New to Gemini? Here are some great starting points:
 | `Shift+Backspace` | Go forward in history |
 | `Ctrl+B` | Toggle bookmarks sidebar |
 | `Ctrl+D` | Bookmark current page |
-| `e` | Edit selected bookmark/folder (in sidebar) |
-| `d` | Delete selected bookmark/folder (in sidebar) |
+| `Ctrl+E` | Open mail screen |
+| `Ctrl+J` | Open feeds screen |
+| `Ctrl+K` | Quick navigation (fuzzy finder) |
+| `Ctrl+T` | New tab |
+| `Ctrl+W` | Close tab |
+| `Ctrl+S` | Save page snapshot |
+| `Ctrl+,` | Open settings |
 | `Ctrl+Q` | Quit |
 
 ---
@@ -245,12 +268,8 @@ Bookmarks are stored separately at `~/.config/astronomo/bookmarks.toml`.
 
 Astronomo is actively developed. Here's what's coming next:
 
-**Phase 2 — Enhanced UX:**
-- **Multiple Tabs** — Browse multiple capsules simultaneously
+**Planned:**
 - **Page Search** — Find text within pages (Ctrl+F)
-- **Search Engine Integration** — Quick access to Gemini search engines
-
-**Phase 3 — Advanced Features:**
 - **Downloads** — Save pages and files to disk
 - **Custom Keybindings** — Vi/Emacs-style key configurations
 
@@ -262,6 +281,7 @@ Contributions are welcome! Astronomo is built with:
 
 - **[Textual](https://textual.textualize.io/)** — Modern Python TUI framework
 - **[Nauyaca](https://github.com/alanbato/nauyaca)** — Gemini protocol library
+- **[Titlani](https://github.com/alanbato/titlani)** — Misfin protocol library
 - **[pytest](https://pytest.org/)** — Testing framework
 
 ### Development Setup
@@ -294,3 +314,4 @@ uv run textual run --dev src/astronomo/astronomo.py
 **Development:**
 - [Textual Documentation](https://textual.textualize.io/) — The TUI framework powering Astronomo
 - [Nauyaca](https://github.com/alanbato/nauyaca) — Gemini protocol library for Python
+- [Titlani](https://github.com/alanbato/titlani) — Misfin protocol library for Python

@@ -46,6 +46,24 @@ Astronomo is a modern terminal-based browser for the [Gemini protocol](https://g
 
     Code blocks in preformatted text are automatically syntax-highlighted.
 
+-   :material-email:{ .lg .middle } **GMAP Mail**
+
+    ---
+
+    Send and receive mail via the Misfin protocol with a three-pane mail interface.
+
+-   :material-rss:{ .lg .middle } **RSS/Atom Feeds**
+
+    ---
+
+    Subscribe to and read feeds from Geminispace with folder organization.
+
+-   :material-earth:{ .lg .middle } **Multi-Protocol**
+
+    ---
+
+    Browse Gemini, Gopher, Finger, Nex, and Spartan resources natively.
+
 </div>
 
 ---
@@ -99,7 +117,7 @@ astronomo gemini://geminiprotocol.net/
 
 ## Project Status
 
-Astronomo is currently in **v0.1.0** (early development). Phase 1 features are complete:
+Astronomo is under active development:
 
 | Feature | Status |
 |---------|--------|
@@ -110,6 +128,12 @@ Astronomo is currently in **v0.1.0** (early development). Phase 1 features are c
 | Configuration file | :white_check_mark: |
 | Input prompts (search, passwords) | :white_check_mark: |
 | Client certificates | :white_check_mark: |
+| Multiple tabs | :white_check_mark: |
+| Multi-protocol (Gemini, Gopher, Finger, Nex, Spartan) | :white_check_mark: |
+| RSS/Atom feeds | :white_check_mark: |
+| GMAP mail (Misfin) | :white_check_mark: |
+| Inline images (Chafa) | :white_check_mark: |
+| Quick navigation (fuzzy finder) | :white_check_mark: |
 
 See the [Changelog](changelog.md) for version history.
 

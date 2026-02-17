@@ -107,6 +107,7 @@ nav:
       - Navigation: how-to/navigation.md
       - Bookmarks: how-to/bookmarks.md
       - Feeds: how-to/feeds.md
+      - Mail: how-to/mail.md
       - Configuration: how-to/configure.md
       - Certificates: how-to/certificates.md
       - Known Hosts: how-to/known-hosts.md

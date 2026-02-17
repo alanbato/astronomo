@@ -15,6 +15,7 @@ These shortcuts work anywhere in the application:
 | ++ctrl+j++ | Toggle feeds screen |
 | ++ctrl+k++ | Open quick navigation (fuzzy finder) |
 | ++ctrl+s++ | Save page snapshot |
+| ++ctrl+e++ | Open mail screen |
 | ++ctrl+comma++ | Open settings |
 
 ## Navigation
@@ -113,6 +114,34 @@ When the feeds screen is open (++ctrl+j++):
 |-----|--------|
 | ++arrow-up++ / ++arrow-down++ | Navigate items |
 | ++enter++ | Open article in browser |
+
+## Mail Screen
+
+When the mail screen is open (++ctrl+e++):
+
+### General
+
+| Key | Action |
+|-----|--------|
+| ++escape++ or ++ctrl+e++ | Close mail screen |
+| ++tab++ / ++shift+tab++ | Next / previous panel |
+| ++arrow-left++ / ++arrow-right++ | Switch panels |
+| ++arrow-up++ / ++arrow-down++ | Navigate within panel |
+| ++enter++ | Select item |
+| ++ctrl+n++ | Compose new message |
+| ++ctrl+r++ | Sync messages |
+| ++ctrl+a++ | Add account |
+
+### Message Actions
+
+| Key | Action |
+|-----|--------|
+| ++a++ | Archive message |
+| ++d++ | Move to Trash |
+| ++shift+d++ | Permanently delete (from Trash) |
+| ++u++ | Toggle unread |
+| ++r++ | Reply |
+| ++t++ | Manage tags |
 
 ## Mouse Actions
 
