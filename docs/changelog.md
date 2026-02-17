@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GMAP mail: Message list cards now show a truncated body preview beneath the subject line
 
 ### Added
+- Misfin protocol URL support: `misfin:` links in Gemtext pages and the address bar now open the mail compose screen with recipients pre-filled. Percent-encoded query text is parsed for subject (`# heading`) and body, following the `mailto:`-style URI format (RFC 3986 compliant, no `//`)
 - GMAP mail client: Full terminal mail experience for Misfin mailboxes via GMAP protocol (Ctrl+E)
   - Three-pane mail interface: tags sidebar, message list, and message preview
   - Account management with TOML persistence and certificate-based authentication

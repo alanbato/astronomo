@@ -71,12 +71,18 @@ class ComposeModal(ModalScreen[bool]):
         account: GmapAccount,
         identity_manager: IdentityManager,
         reply_to: CachedMessage | None = None,
+        to: str = "",
+        subject: str = "",
+        body: str = "",
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.account = account
         self.identity_manager = identity_manager
         self.reply_to = reply_to
+        self.initial_to = to
+        self.initial_subject = subject
+        self.initial_body = body
 
     def compose(self) -> ComposeResult:
         is_reply = self.reply_to is not None
@@ -91,7 +97,7 @@ class ComposeModal(ModalScreen[bool]):
 
             # To
             yield Label("To:", classes="field-label")
-            to_value = ""
+            to_value = self.initial_to
             if is_reply and self.reply_to:
                 try:
                     msg = self.reply_to.parse()
@@ -103,7 +109,7 @@ class ComposeModal(ModalScreen[bool]):
 
             # Subject
             yield Label("Subject:", classes="field-label")
-            subject_value = ""
+            subject_value = self.initial_subject
             if is_reply and self.reply_to and self.reply_to.subject:
                 if not self.reply_to.subject.startswith("Re:"):
                     subject_value = f"Re: {self.reply_to.subject}"
@@ -113,7 +119,7 @@ class ComposeModal(ModalScreen[bool]):
 
             # Body
             yield Label("Message (gemtext):", classes="field-label")
-            body_value = ""
+            body_value = self.initial_body
             if is_reply and self.reply_to:
                 try:
                     msg = self.reply_to.parse()

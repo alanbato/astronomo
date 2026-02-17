@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import (
     quote,
+    unquote,
     urljoin,
     urlparse,
     urlunparse,
@@ -281,6 +282,11 @@ class Astronomo(App[None]):
 
         # Normalize URL with smart scheme detection
         url = self._normalize_url(url)
+
+        # Intercept misfin: URLs — open mail compose instead of fetching
+        if url.startswith("misfin:"):
+            self._handle_misfin_url(url)
+            return
 
         viewer = self.query_one("#content", GemtextViewer)
         loading_text = f"# Fetching\n\n{url}\n\nPlease wait..."
@@ -595,6 +601,9 @@ class Astronomo(App[None]):
         # Check if it's an absolute URL with a supported scheme
         if parsed.scheme in ("gemini", "gopher", "finger", "nex", "spartan"):
             pass  # Use as-is
+        elif parsed.scheme == "misfin":
+            self._handle_misfin_url(link_url)
+            return
         elif parsed.scheme in ("http", "https"):
             self._open_external_link(link_url)
             return
@@ -2019,6 +2028,56 @@ class Astronomo(App[None]):
                 account_manager=self.gmap_accounts,
                 identity_manager=self.identities,
                 cache=self.mail_cache,
+            )
+        )
+
+    def _handle_misfin_url(self, url: str) -> None:
+        """Parse a misfin: URL and open the mail compose screen.
+
+        Supports both ``misfin:addr?message`` (RFC 3986 compliant) and
+        legacy ``misfin://addr`` forms.  Addresses are comma-delimited;
+        the query is percent-encoded message text where the first ``#``
+        heading is used as the subject.
+        """
+        parsed = urlparse(url)
+
+        # misfin:addr → path="addr"; misfin://addr → netloc="addr"
+        raw_addresses = parsed.path or parsed.netloc
+        # Take first address (ComposeModal handles one recipient)
+        to_address = ""
+        if raw_addresses:
+            to_address = raw_addresses.split(",")[0].strip()
+
+        # Query is percent-encoded message text (not key=value params)
+        subject = ""
+        body = ""
+        if parsed.query:
+            message_text = unquote(parsed.query).replace("\r\n", "\n")
+            lines = message_text.split("\n")
+
+            # Extract subject from first # heading
+            subject_idx = None
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped.startswith("#"):
+                    subject = stripped.lstrip("#").strip()
+                    subject_idx = i
+                    break
+
+            if subject_idx is not None:
+                remaining = lines[:subject_idx] + lines[subject_idx + 1 :]
+                body = "\n".join(remaining).strip()
+            else:
+                body = message_text.strip()
+
+        self.push_screen(
+            MailScreen(
+                account_manager=self.gmap_accounts,
+                identity_manager=self.identities,
+                cache=self.mail_cache,
+                compose_to=to_address,
+                compose_subject=subject,
+                compose_body=body,
             )
         )
 

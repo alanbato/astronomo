@@ -116,12 +116,18 @@ class MailScreen(Screen):
         account_manager: GmapAccountManager,
         identity_manager: IdentityManager,
         cache: MailCache,
+        compose_to: str = "",
+        compose_subject: str = "",
+        compose_body: str = "",
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.account_manager = account_manager
         self.identity_manager = identity_manager
         self.cache = cache
+        self.compose_to = compose_to
+        self.compose_subject = compose_subject
+        self.compose_body = compose_body
         self.current_account: GmapAccount | None = None
         self.current_tag: str = "Inbox"
         self.current_msgid: str | None = None
@@ -165,6 +171,28 @@ class MailScreen(Screen):
         # Load cached data first, then sync in background
         self._load_from_cache()
         self._sync_account(self.current_account)
+
+        # Auto-open compose modal if pre-fill address was provided
+        if self.compose_to:
+            self.call_after_refresh(self._open_compose_for)
+
+    def _open_compose_for(self) -> None:
+        """Open compose modal with pre-filled fields from a misfin:// URL."""
+        if self.current_account is None:
+            return
+
+        from astronomo.widgets.mail.compose_modal import ComposeModal
+
+        self.app.push_screen(
+            ComposeModal(
+                account=self.current_account,
+                identity_manager=self.identity_manager,
+                to=self.compose_to,
+                subject=self.compose_subject,
+                body=self.compose_body,
+            ),
+            self._on_compose_done,
+        )
 
     def _update_title(self, title: str) -> None:
         """Update the mail screen title."""
