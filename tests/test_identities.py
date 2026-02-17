@@ -10,6 +10,7 @@ from astronomo.identities import (
     Identity,
     IdentityManager,
     LagrangeImportResult,
+    _url_matches_prefix,
     extract_cert_from_pem,
     extract_key_from_pem,
     get_lagrange_idents_path,
@@ -215,6 +216,104 @@ class TestIdentity:
         assert identity.expires_at is None
 
 
+class TestUrlMatchesPrefix:
+    """Tests for port-aware URL prefix matching."""
+
+    def test_exact_match(self) -> None:
+        """Test that exact prefix still matches."""
+        assert (
+            _url_matches_prefix("gemini://example.com/page", "gemini://example.com/")
+            is True
+        )
+
+    def test_no_port_prefix_matches_url_with_port(self) -> None:
+        """Test that a prefix without port matches a URL with a port."""
+        assert (
+            _url_matches_prefix(
+                "gemini://woodpeckersnest.space:1958/",
+                "gemini://woodpeckersnest.space/",
+            )
+            is True
+        )
+
+    def test_no_port_prefix_matches_url_with_port_and_path(self) -> None:
+        """Test prefix without port matches URL with port and path."""
+        assert (
+            _url_matches_prefix(
+                "gemini://example.com:1958/inbox/",
+                "gemini://example.com/",
+            )
+            is True
+        )
+
+    def test_prefix_with_path_matches_url_with_port(self) -> None:
+        """Test prefix with path (no port) matches URL with port and same path."""
+        assert (
+            _url_matches_prefix(
+                "gemini://example.com:1958/app/page",
+                "gemini://example.com/app/",
+            )
+            is True
+        )
+
+    def test_prefix_with_path_no_match_different_path(self) -> None:
+        """Test prefix with path does not match URL with different path."""
+        assert (
+            _url_matches_prefix(
+                "gemini://example.com:1958/other/page",
+                "gemini://example.com/app/",
+            )
+            is False
+        )
+
+    def test_prefix_with_port_only_matches_same_port(self) -> None:
+        """Test that a prefix with explicit port only matches that port."""
+        assert (
+            _url_matches_prefix(
+                "gemini://example.com:1958/",
+                "gemini://example.com:1958/",
+            )
+            is True
+        )
+        assert (
+            _url_matches_prefix(
+                "gemini://example.com:9999/",
+                "gemini://example.com:1958/",
+            )
+            is False
+        )
+
+    def test_different_scheme_no_match(self) -> None:
+        """Test that different schemes don't match."""
+        assert (
+            _url_matches_prefix(
+                "gopher://example.com:70/",
+                "gemini://example.com/",
+            )
+            is False
+        )
+
+    def test_different_host_no_match(self) -> None:
+        """Test that different hosts don't match."""
+        assert (
+            _url_matches_prefix(
+                "gemini://other.com:1958/",
+                "gemini://example.com/",
+            )
+            is False
+        )
+
+    def test_no_port_prefix_matches_default_port_url(self) -> None:
+        """Test that prefix without port matches URL without port."""
+        assert (
+            _url_matches_prefix(
+                "gemini://example.com/page",
+                "gemini://example.com/",
+            )
+            is True
+        )
+
+
 class TestIdentityManager:
     """Tests for the IdentityManager class."""
 
@@ -411,6 +510,51 @@ class TestIdentityManager:
         found = identity_manager.get_identity_for_url("gemini://example.com/other/page")
         assert found is not None
         assert found.id == identity1.id
+
+    def test_get_identity_for_url_port_aware(
+        self, identity_manager: IdentityManager
+    ) -> None:
+        """Test that identity matches URL with different port."""
+        identity = identity_manager.create_identity(
+            name="Misfin Identity",
+            hostname="example.com",
+        )
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
+
+        found = identity_manager.get_identity_for_url("gemini://example.com:1958/inbox")
+
+        assert found is not None
+        assert found.id == identity.id
+
+    def test_get_all_identities_for_url_port_aware(
+        self, identity_manager: IdentityManager
+    ) -> None:
+        """Test that all matching identities are found with different port."""
+        identity = identity_manager.create_identity(
+            name="Misfin Identity",
+            hostname="example.com",
+        )
+        identity_manager.add_url_prefix(identity.id, "gemini://example.com/")
+
+        matches = identity_manager.get_all_identities_for_url(
+            "gemini://example.com:1958/inbox"
+        )
+
+        assert len(matches) == 1
+        assert matches[0].id == identity.id
+
+    def test_matches_url_port_aware(self) -> None:
+        """Test that Identity.matches_url works with different ports."""
+        identity = Identity.create(
+            name="Test",
+            fingerprint="sha256:abc",
+            cert_path=Path("/tmp/cert.pem"),
+            key_path=Path("/tmp/key.pem"),
+        )
+        identity.add_url_prefix("gemini://example.com/")
+
+        assert identity.matches_url("gemini://example.com:1958/page") is True
+        assert identity.matches_url("gemini://other.com:1958/page") is False
 
     def test_is_identity_valid(self, identity_manager: IdentityManager) -> None:
         """Test checking if an identity is valid."""

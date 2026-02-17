@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Identity URL prefix matching is now port-aware: a prefix like `gemini://example.com/` now correctly matches URLs with explicit ports like `gemini://example.com:1958/`. Prefixes with explicit ports still only match that specific port
+- "Remember choice" identity prompt mode now auto-selects the best matching identity instead of silently proceeding without one when no session choice exists
 - GMAP mail: Tags in the sidebar are now clickable — clicking a tag selects it and loads its messages
 - GMAP mail: Compose now checks the Misfin send response status; failed deliveries show an error instead of silently proceeding
 - GMAP mail: Sent copy is now tagged as `Sent` and marked as read instead of appearing in Inbox as unread

@@ -360,9 +360,11 @@ class Astronomo(App[None]):
                     prompt_behavior = self.config_manager.identity_prompt
 
                     if prompt_behavior == "remember_choice":
-                        # Never prompt - proceed without identity
-                        # (User must explicitly select via status 60 or settings)
-                        pass
+                        # Never prompt - auto-select best matching identity
+                        identity = matching[0]  # Longest prefix match
+                        prefix = self._get_session_prefix_for_url(url)
+                        self._session_identity_choices[prefix] = identity
+                        self._save_session_choice(prefix, identity)
                     elif prompt_behavior == "when_ambiguous":
                         if len(matching) == 1:
                             # Auto-select the only matching identity

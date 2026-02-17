@@ -10,6 +10,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import tomli_w
 
@@ -26,6 +27,37 @@ from nauyaca.security.certificates import (
     is_certificate_expired,
     load_certificate,
 )
+
+
+def _url_matches_prefix(url: str, prefix: str) -> bool:
+    """Check if a URL matches a prefix, with port-aware matching.
+
+    When the prefix has no explicit port, it matches URLs on any port
+    for the same host. When the prefix specifies a port, only that
+    exact port matches.
+
+    For example, prefix "gemini://example.com/" matches both
+    "gemini://example.com/" and "gemini://example.com:1958/path".
+    But prefix "gemini://example.com:1958/" only matches URLs on port 1958.
+    """
+    if url.startswith(prefix):
+        return True
+
+    parsed_prefix = urlparse(prefix)
+    # Only apply port-aware matching if the prefix has no explicit port
+    if parsed_prefix.port is not None:
+        return False
+
+    parsed_url = urlparse(url)
+    if parsed_prefix.scheme != parsed_url.scheme:
+        return False
+    if parsed_prefix.hostname != parsed_url.hostname:
+        return False
+
+    # Reconstruct the prefix path portion and check it matches
+    prefix_path = parsed_prefix.path or "/"
+    url_path = parsed_url.path or "/"
+    return url_path.startswith(prefix_path)
 
 
 def pem_file_contains_key(file_path: Path) -> bool:
@@ -236,7 +268,7 @@ class Identity:
 
     def matches_url(self, url: str) -> bool:
         """Check if this identity should be used for a given URL."""
-        return any(url.startswith(prefix) for prefix in self.url_prefixes)
+        return any(_url_matches_prefix(url, prefix) for prefix in self.url_prefixes)
 
     def to_dict(self) -> dict:
         """Convert to dictionary for TOML serialization."""
@@ -500,7 +532,7 @@ class IdentityManager:
 
         for identity in self.identities:
             for prefix in identity.url_prefixes:
-                if url.startswith(prefix) and len(prefix) > best_length:
+                if _url_matches_prefix(url, prefix) and len(prefix) > best_length:
                     best_match = identity
                     best_length = len(prefix)
 
@@ -522,7 +554,7 @@ class IdentityManager:
 
         for identity in self.identities:
             for prefix in identity.url_prefixes:
-                if url.startswith(prefix):
+                if _url_matches_prefix(url, prefix):
                     matches.append((len(prefix), identity))
                     break  # Only count each identity once (use longest matching prefix)
 
