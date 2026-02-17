@@ -21,11 +21,8 @@ dependencies = [
     "mapilli>=0.1.1",
     "mototli>=0.1.1",
     "teyaotlani>=0.1.3",
-    "titlani",
+    "titlani>=0.1.3",
 ]
-
-[tool.uv.sources]
-titlani = { path = "../titlani" }
 
 [project.scripts]
 astronomo = "astronomo:main"
