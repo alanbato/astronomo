@@ -1770,7 +1770,7 @@ wheels = [
 
 [[package]]
 name = "titlani"
-version = "0.1.3"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
@@ -1782,9 +1782,9 @@ dependencies = [
     { name = "tlacacoca" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/54/70/83b2cb49ccb5732e9663e8a86491af0c2362a6e8156312dc111943ceaead/titlani-0.1.3.tar.gz", hash = "sha256:5badf8c7695f1297e1185377d7512443af283f0c079ef0199a28b199da861698", size = 51214, upload-time = "2026-02-17T13:13:03.398Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/72/c4ce07532989cfc4997336452470a12a6ae068b01cc14eeaf488ded1f05f/titlani-0.2.0.tar.gz", hash = "sha256:304733c332f47d403d345bc8cdf5d80e2e77e2803f7d420bc9321a311d94c6ee", size = 54574, upload-time = "2026-02-18T00:13:33.192Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/78/f4257b363c8c8c38b2f57d952338a796171c2a1b152e9c5b1aa93663083b/titlani-0.1.3-py3-none-any.whl", hash = "sha256:f25414568a161114057dc454c1313f154d012b4b76552d0ac4c88c30bb527099", size = 71883, upload-time = "2026-02-17T13:13:01.652Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/0c/04a441c655fc049385a7fad6cb94b9e6a22577d916597c348940c9637cb6/titlani-0.2.0-py3-none-any.whl", hash = "sha256:447bc41b79bfc9e3b752589b55f70076a78e310f7d01d90bba1cdbb23b303a09", size = 75916, upload-time = "2026-02-18T00:13:31.347Z" },
 ]
 
 [[package]]
