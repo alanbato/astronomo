@@ -21,7 +21,7 @@ else:
     import tomli as tomllib
 
 from nauyaca.client import GeminiClient
-from nauyaca.security.tofu import CertificateChangedError, TOFUDatabase
+from nauyaca.security import CertificateChangedError, TOFUDatabase
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal

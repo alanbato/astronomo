@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from nauyaca.security.certificates import get_certificate_fingerprint_from_path
+from nauyaca.security import get_certificate_fingerprint_from_path
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, VerticalScroll

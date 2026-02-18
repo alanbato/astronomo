@@ -20,7 +20,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
     from typing_extensions import Self
-from nauyaca.security.certificates import (
+from nauyaca.security import (
     generate_self_signed_cert,
     get_certificate_fingerprint_from_path,
     get_certificate_info,

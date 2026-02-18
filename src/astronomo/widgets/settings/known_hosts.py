@@ -5,7 +5,7 @@ Displays all trusted server certificates and allows revoking trust.
 
 from typing import Any
 
-from nauyaca.security.tofu import TOFUDatabase
+from nauyaca.security import TOFUDatabase
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
